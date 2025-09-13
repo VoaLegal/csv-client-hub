@@ -91,10 +91,8 @@ export const MultiCSVImport: React.FC<MultiCSVImportProps> = ({ onImport }) => {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {[
               { type: 'portfolio' as CSVDataType, files: 'Portfolio_VLMA' },
-              { type: 'kanban' as CSVDataType, files: 'Kanban' },
-              { type: 'checklist' as CSVDataType, files: 'Checklist_FOCAL' },
               { type: 'ativos' as CSVDataType, files: 'Ativos/Mapa_Clientes' },
-              { type: 'clientes' as CSVDataType, files: 'Clientes' }
+              { type: 'clientes' as CSVDataType, files: 'Clientes (2 colunas: cliente, tipo)' }
             ].map(({ type, files }) => (
               <div key={type} className="flex items-center space-x-2 p-2 rounded-lg border">
                 <div className={`p-1.5 rounded ${getTypeColor(type)}`}>

@@ -31,7 +31,7 @@ const parseCSVLine = (line: string): string[] => {
   return result;
 };
 
-const generateId = (): string => `item-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+export const generateId = (): string => `item-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
 export const parsePortfolioCSV = (csvContent: string): PortfolioItem[] => {
   const lines = csvContent.split('\n').filter(line => line.trim());
@@ -177,15 +177,28 @@ export const parseSimpleClientsCSV = (csvContent: string): SimpleClient[] => {
   
   const clients: SimpleClient[] = [];
   
-  // Skip header and empty rows
-  for (let i = 2; i < lines.length; i++) {
+  // Get headers to understand structure
+  const headers = parseCSVLine(lines[0]);
+  const normalizedHeaders = headers.map(h => h.toLowerCase().trim());
+  
+  // Find column indices
+  const clienteIndex = normalizedHeaders.findIndex(h => h.includes('cliente'));
+  const tipoIndex = normalizedHeaders.findIndex(h => h.includes('tipo'));
+  
+  // Skip header (first line) and process data
+  for (let i = 1; i < lines.length; i++) {
     const values = parseCSVLine(lines[i]);
-    if (!values[1]?.trim()) continue;
+    
+    // Use found indices or fallback to first two columns
+    const clienteValue = clienteIndex >= 0 ? values[clienteIndex] : values[0];
+    const tipoValue = tipoIndex >= 0 ? values[tipoIndex] : values[1];
+    
+    if (!clienteValue?.trim()) continue;
     
     const client: SimpleClient = {
       id: generateId(),
-      cliente: values[1] || undefined,
-      tipo: values[2] || undefined,
+      cliente: clienteValue || undefined,
+      tipo: tipoValue || undefined,
     };
     
     if (client.cliente) {

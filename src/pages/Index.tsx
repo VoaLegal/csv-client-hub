@@ -12,14 +12,15 @@ import {
   Database,
   BarChart3
 } from 'lucide-react';
-import { MultiCSVImport } from '@/components/MultiCSVImport';
-import { DataViewer } from '@/components/DataViewer';
+import { UploadModal } from '@/components/UploadModal';
+import { Dashboard } from '@/components/Dashboard';
 import { ImportedData } from '@/types/portfolio';
 import { getCSVTypeDisplayName } from '@/utils/csvDetector';
 
 const Index = () => {
   const [importedData, setImportedData] = useState<ImportedData[]>([]);
-  const [showImport, setShowImport] = useState(true);
+  const [showDashboard, setShowDashboard] = useState(false);
+  const [showUploadModal, setShowUploadModal] = useState(false);
 
   const handleImport = (data: ImportedData) => {
     setImportedData(prev => {
@@ -27,11 +28,11 @@ const Index = () => {
       const filtered = prev.filter(d => d.type !== data.type);
       return [...filtered, data];
     });
-    setShowImport(false);
+    setShowDashboard(true);
   };
 
   const handleNewImport = () => {
-    setShowImport(true);
+    setShowUploadModal(true);
   };
 
   const totalItems = importedData.reduce((sum, data) => sum + data.totalImported, 0);
@@ -69,6 +70,13 @@ const Index = () => {
                   Importar Mais
                 </Button>
               )}
+              
+              {importedData.length > 0 && (
+                <Button onClick={() => setShowDashboard(true)} size="sm" variant="outline">
+                  <BarChart3 className="h-4 w-4 mr-2" />
+                  Dashboard
+                </Button>
+              )}
             </div>
           </div>
         </div>
@@ -76,27 +84,33 @@ const Index = () => {
 
       {/* Main Content */}
       <div className="container mx-auto px-4 py-8">
-        {showImport || importedData.length === 0 ? (
+        {showDashboard ? (
+          <Dashboard 
+            importedData={importedData}
+            onImport={handleImport}
+            onClose={() => setShowDashboard(false)}
+          />
+        ) : (
           <div className="max-w-4xl mx-auto space-y-6">
             {/* Hero Section */}
             <div className="text-center space-y-4 mb-8">
               <h2 className="text-3xl font-bold">Sistema de Gestão VLMA</h2>
               <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
-                Importe e gerencie todos os tipos de dados do escritório: 
-                clientes, portfolio de serviços, tarefas kanban, checklists e muito mais.
+                Importe e gerencie dados de clientes ativos, lista de clientes e portfolio de serviços.
+                Crie novos registros manualmente ou importe via CSV.
               </p>
             </div>
 
             {/* Features */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
               <Card className="shadow-card text-center">
                 <CardContent className="pt-6">
                   <div className="h-12 w-12 rounded-lg bg-accent/10 flex items-center justify-center mx-auto mb-3">
                     <Database className="h-6 w-6 text-accent" />
                   </div>
-                  <h3 className="font-semibold mb-2">Clientes Ativos</h3>
+                  <h3 className="font-semibold mb-2">Ativos</h3>
                   <p className="text-sm text-muted-foreground">
-                    Base completa de clientes com informações detalhadas
+                    Base completa de ativos com informações detalhadas
                   </p>
                 </CardContent>
               </Card>
@@ -104,11 +118,11 @@ const Index = () => {
               <Card className="shadow-card text-center">
                 <CardContent className="pt-6">
                   <div className="h-12 w-12 rounded-lg bg-info/10 flex items-center justify-center mx-auto mb-3">
-                    <Briefcase className="h-6 w-6 text-info" />
+                    <Building2 className="h-6 w-6 text-info" />
                   </div>
-                  <h3 className="font-semibold mb-2">Portfolio</h3>
+                  <h3 className="font-semibold mb-2">Lista de Clientes</h3>
                   <p className="text-sm text-muted-foreground">
-                    Serviços, produtos e oportunidades de negócio
+                    Lista simples de clientes e tipos de contrato
                   </p>
                 </CardContent>
               </Card>
@@ -116,51 +130,46 @@ const Index = () => {
               <Card className="shadow-card text-center">
                 <CardContent className="pt-6">
                   <div className="h-12 w-12 rounded-lg bg-warning/10 flex items-center justify-center mx-auto mb-3">
-                    <BarChart3 className="h-6 w-6 text-warning" />
+                    <Briefcase className="h-6 w-6 text-warning" />
                   </div>
-                  <h3 className="font-semibold mb-2">Kanban</h3>
+                  <h3 className="font-semibold mb-2">Portfolio</h3>
                   <p className="text-sm text-muted-foreground">
-                    Gestão de tarefas e projetos organizados
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card className="shadow-card text-center">
-                <CardContent className="pt-6">
-                  <div className="h-12 w-12 rounded-lg bg-success/10 flex items-center justify-center mx-auto mb-3">
-                    <FileText className="h-6 w-6 text-success" />
-                  </div>
-                  <h3 className="font-semibold mb-2">Checklists</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Processos estruturados e qualificação
+                    Serviços, produtos e oportunidades de negócio
                   </p>
                 </CardContent>
               </Card>
             </div>
 
             {/* Import Section */}
-            <MultiCSVImport onImport={handleImport} />
+            <div className="text-center">
+              <Button onClick={() => setShowUploadModal(true)} size="lg" className="shadow-hover">
+                <Upload className="h-4 w-4 mr-2" />
+                Importar Arquivo CSV
+              </Button>
+            </div>
 
             {importedData.length > 0 && (
               <div className="text-center pt-4">
                 <Button 
-                  onClick={() => setShowImport(false)}
+                  onClick={() => setShowDashboard(true)}
                   size="lg"
                   className="shadow-hover"
                 >
                   <BarChart3 className="h-4 w-4 mr-2" />
-                  Ver Dados Importados
+                  Acessar Dashboard
                 </Button>
               </div>
             )}
           </div>
-        ) : (
-          <DataViewer 
-            data={importedData} 
-            onClose={() => setShowImport(true)} 
-          />
         )}
       </div>
+
+      {/* Upload Modal */}
+      <UploadModal 
+        isOpen={showUploadModal}
+        onClose={() => setShowUploadModal(false)}
+        onImport={handleImport}
+      />
     </div>
   );
 };
