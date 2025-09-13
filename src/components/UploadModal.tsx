@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { parseAnyCSV } from '@/utils/csvParsers';
 import { getCSVTypeDisplayName, getCSVTypeDescription } from '@/utils/csvDetector';
 import { ImportedData, CSVDataType } from '@/types/portfolio';
+import { CSVTemplateList } from '@/components/CSVTemplateDownloader';
 
 interface UploadModalProps {
   isOpen: boolean;
@@ -82,7 +83,7 @@ export const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onImp
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center">
             <Upload className="h-5 w-5 mr-2" />
@@ -90,9 +91,11 @@ export const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onImp
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-6">
-          {/* Supported Formats */}
-          <div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Left Column - Upload */}
+          <div className="space-y-6">
+            {/* Supported Formats */}
+            <div>
             <h4 className="text-sm font-semibold mb-3">Formatos Suportados:</h4>
             <div className="grid grid-cols-1 gap-3">
               {[
@@ -196,16 +199,22 @@ export const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, onImp
             </div>
           </div>
 
-          {/* Actions */}
-          <div className="flex justify-end space-x-2">
-            <Button variant="outline" onClick={handleClose}>
-              {success ? 'Fechar' : 'Cancelar'}
-            </Button>
-            {success && (
-              <Button onClick={handleClose}>
-                Continuar
+            {/* Actions */}
+            <div className="flex justify-end space-x-2">
+              <Button variant="outline" onClick={handleClose}>
+                {success ? 'Fechar' : 'Cancelar'}
               </Button>
-            )}
+              {success && (
+                <Button onClick={handleClose}>
+                  Continuar
+                </Button>
+              )}
+            </div>
+          </div>
+
+          {/* Right Column - Templates */}
+          <div>
+            <CSVTemplateList />
           </div>
         </div>
       </DialogContent>

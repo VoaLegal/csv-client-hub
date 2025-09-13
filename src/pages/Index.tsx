@@ -2,18 +2,21 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { 
-  Upload, 
-  Users, 
-  Building2, 
+import {
+  Upload,
+  Users,
+  Building2,
   FileText,
   TrendingUp,
   Briefcase,
   Database,
-  BarChart3
+  BarChart3,
+  Plus
 } from 'lucide-react';
 import { UploadModal } from '@/components/UploadModal';
 import { Dashboard } from '@/components/Dashboard';
+import { ManualEntryModal } from '@/components/ManualEntryModal';
+import { ComprehensiveDashboard } from '@/components/ComprehensiveDashboard';
 import { ImportedData } from '@/types/portfolio';
 import { getCSVTypeDisplayName } from '@/utils/csvDetector';
 
@@ -21,12 +24,31 @@ const Index = () => {
   const [importedData, setImportedData] = useState<ImportedData[]>([]);
   const [showDashboard, setShowDashboard] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
+  const [showManualModal, setShowManualModal] = useState(false);
 
   const handleImport = (data: ImportedData) => {
     setImportedData(prev => {
       // Remove existing data of the same type and add new data
       const filtered = prev.filter(d => d.type !== data.type);
       return [...filtered, data];
+    });
+    setShowDashboard(true);
+  };
+
+  const handleManualAdd = (data: ImportedData) => {
+    setImportedData(prev => {
+      // Find existing data of the same type and merge
+      const existingIndex = prev.findIndex(d => d.type === data.type);
+      if (existingIndex >= 0) {
+        const updated = [...prev];
+        updated[existingIndex] = {
+          ...updated[existingIndex],
+          data: [...updated[existingIndex].data, ...data.data],
+          totalImported: updated[existingIndex].totalImported + data.totalImported
+        };
+        return updated;
+      }
+      return [...prev, data];
     });
     setShowDashboard(true);
   };
@@ -65,17 +87,20 @@ const Index = () => {
               )}
               
               {importedData.length > 0 && (
-                <Button onClick={handleNewImport} size="sm">
-                  <Upload className="h-4 w-4 mr-2" />
-                  Importar Mais
-                </Button>
-              )}
-              
-              {importedData.length > 0 && (
-                <Button onClick={() => setShowDashboard(true)} size="sm" variant="outline">
-                  <BarChart3 className="h-4 w-4 mr-2" />
-                  Dashboard
-                </Button>
+                <>
+                  <Button onClick={handleNewImport} size="sm" variant="outline">
+                    <Upload className="h-4 w-4 mr-2" />
+                    Importar CSV
+                  </Button>
+                  <Button onClick={() => setShowManualModal(true)} size="sm" variant="outline">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Adicionar Manual
+                  </Button>
+                  <Button onClick={() => setShowDashboard(true)} size="sm">
+                    <BarChart3 className="h-4 w-4 mr-2" />
+                    Dashboard
+                  </Button>
+                </>
               )}
             </div>
           </div>
@@ -85,11 +110,7 @@ const Index = () => {
       {/* Main Content */}
       <div className="container mx-auto px-4 py-8">
         {showDashboard ? (
-          <Dashboard 
-            importedData={importedData}
-            onImport={handleImport}
-            onClose={() => setShowDashboard(false)}
-          />
+          <ComprehensiveDashboard importedData={importedData} />
         ) : (
           <div className="max-w-4xl mx-auto space-y-6">
             {/* Hero Section */}
@@ -141,11 +162,17 @@ const Index = () => {
             </div>
 
             {/* Import Section */}
-            <div className="text-center">
-              <Button onClick={() => setShowUploadModal(true)} size="lg" className="shadow-hover">
-                <Upload className="h-4 w-4 mr-2" />
-                Importar Arquivo CSV
-              </Button>
+            <div className="text-center space-y-4">
+              <div className="flex justify-center gap-4">
+                <Button onClick={() => setShowUploadModal(true)} size="lg" className="shadow-hover">
+                  <Upload className="h-4 w-4 mr-2" />
+                  Importar Arquivo CSV
+                </Button>
+                <Button onClick={() => setShowManualModal(true)} size="lg" variant="outline" className="shadow-hover">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Adicionar Manualmente
+                </Button>
+              </div>
             </div>
 
             {importedData.length > 0 && (
@@ -165,10 +192,17 @@ const Index = () => {
       </div>
 
       {/* Upload Modal */}
-      <UploadModal 
+      <UploadModal
         isOpen={showUploadModal}
         onClose={() => setShowUploadModal(false)}
         onImport={handleImport}
+      />
+
+      {/* Manual Entry Modal */}
+      <ManualEntryModal
+        isOpen={showManualModal}
+        onClose={() => setShowManualModal(false)}
+        onAdd={handleManualAdd}
       />
     </div>
   );
