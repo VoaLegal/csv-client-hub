@@ -8,24 +8,33 @@ import {
   Building2, 
   FileText,
   TrendingUp,
-  Briefcase
+  Briefcase,
+  Database,
+  BarChart3
 } from 'lucide-react';
-import { CSVImport } from '@/components/CSVImport';
-import { ClientDashboard } from '@/components/ClientDashboard';
-import { Client } from '@/types/client';
+import { MultiCSVImport } from '@/components/MultiCSVImport';
+import { DataViewer } from '@/components/DataViewer';
+import { ImportedData } from '@/types/portfolio';
+import { getCSVTypeDisplayName } from '@/utils/csvDetector';
 
 const Index = () => {
-  const [clients, setClients] = useState<Client[]>([]);
+  const [importedData, setImportedData] = useState<ImportedData[]>([]);
   const [showImport, setShowImport] = useState(true);
 
-  const handleImport = (importedClients: Client[]) => {
-    setClients(prev => [...prev, ...importedClients]);
+  const handleImport = (data: ImportedData) => {
+    setImportedData(prev => {
+      // Remove existing data of the same type and add new data
+      const filtered = prev.filter(d => d.type !== data.type);
+      return [...filtered, data];
+    });
     setShowImport(false);
   };
 
   const handleNewImport = () => {
     setShowImport(true);
   };
+
+  const totalItems = importedData.reduce((sum, data) => sum + data.totalImported, 0);
 
   return (
     <div className="min-h-screen bg-gradient-primary">
@@ -35,26 +44,29 @@ const Index = () => {
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <div className="h-8 w-8 rounded-lg bg-accent flex items-center justify-center">
-                <Building2 className="h-5 w-5 text-accent-foreground" />
+                <Database className="h-5 w-5 text-accent-foreground" />
               </div>
               <div>
-                <h1 className="text-xl font-bold">Sistema de Clientes VLMA</h1>
-                <p className="text-sm text-muted-foreground">Gestão inteligente de clientes</p>
+                <h1 className="text-xl font-bold">Sistema VLMA</h1>
+                <p className="text-sm text-muted-foreground">Gestão inteligente de dados</p>
               </div>
             </div>
             
             <div className="flex items-center space-x-2">
-              {clients.length > 0 && (
-                <Badge variant="secondary" className="text-sm">
-                  <Users className="h-3 w-3 mr-1" />
-                  {clients.length} cliente{clients.length !== 1 ? 's' : ''}
-                </Badge>
+              {totalItems > 0 && (
+                <div className="flex items-center space-x-2">
+                  {importedData.map((data, index) => (
+                    <Badge key={`${data.type}-${index}`} variant="secondary" className="text-sm">
+                      {getCSVTypeDisplayName(data.type)}: {data.totalImported}
+                    </Badge>
+                  ))}
+                </div>
               )}
               
-              {clients.length > 0 && (
+              {importedData.length > 0 && (
                 <Button onClick={handleNewImport} size="sm">
                   <Upload className="h-4 w-4 mr-2" />
-                  Nova Importação
+                  Importar Mais
                 </Button>
               )}
             </div>
@@ -64,27 +76,27 @@ const Index = () => {
 
       {/* Main Content */}
       <div className="container mx-auto px-4 py-8">
-        {showImport || clients.length === 0 ? (
+        {showImport || importedData.length === 0 ? (
           <div className="max-w-4xl mx-auto space-y-6">
             {/* Hero Section */}
             <div className="text-center space-y-4 mb-8">
-              <h2 className="text-3xl font-bold">Sistema de Gestão de Clientes</h2>
-              <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-                Importe seus dados de clientes via CSV e organize todas as informações 
-                por grupos econômicos para uma gestão mais eficiente.
+              <h2 className="text-3xl font-bold">Sistema de Gestão VLMA</h2>
+              <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
+                Importe e gerencie todos os tipos de dados do escritório: 
+                clientes, portfolio de serviços, tarefas kanban, checklists e muito mais.
               </p>
             </div>
 
             {/* Features */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
               <Card className="shadow-card text-center">
                 <CardContent className="pt-6">
                   <div className="h-12 w-12 rounded-lg bg-accent/10 flex items-center justify-center mx-auto mb-3">
-                    <FileText className="h-6 w-6 text-accent" />
+                    <Database className="h-6 w-6 text-accent" />
                   </div>
-                  <h3 className="font-semibold mb-2">Importação CSV</h3>
+                  <h3 className="font-semibold mb-2">Clientes Ativos</h3>
                   <p className="text-sm text-muted-foreground">
-                    Importe facilmente seus dados de clientes através de arquivos CSV
+                    Base completa de clientes com informações detalhadas
                   </p>
                 </CardContent>
               </Card>
@@ -92,11 +104,23 @@ const Index = () => {
               <Card className="shadow-card text-center">
                 <CardContent className="pt-6">
                   <div className="h-12 w-12 rounded-lg bg-info/10 flex items-center justify-center mx-auto mb-3">
-                    <Building2 className="h-6 w-6 text-info" />
+                    <Briefcase className="h-6 w-6 text-info" />
                   </div>
-                  <h3 className="font-semibold mb-2">Organização por Grupos</h3>
+                  <h3 className="font-semibold mb-2">Portfolio</h3>
                   <p className="text-sm text-muted-foreground">
-                    Visualize e organize clientes por grupos econômicos automaticamente
+                    Serviços, produtos e oportunidades de negócio
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card className="shadow-card text-center">
+                <CardContent className="pt-6">
+                  <div className="h-12 w-12 rounded-lg bg-warning/10 flex items-center justify-center mx-auto mb-3">
+                    <BarChart3 className="h-6 w-6 text-warning" />
+                  </div>
+                  <h3 className="font-semibold mb-2">Kanban</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Gestão de tarefas e projetos organizados
                   </p>
                 </CardContent>
               </Card>
@@ -104,34 +128,37 @@ const Index = () => {
               <Card className="shadow-card text-center">
                 <CardContent className="pt-6">
                   <div className="h-12 w-12 rounded-lg bg-success/10 flex items-center justify-center mx-auto mb-3">
-                    <TrendingUp className="h-6 w-6 text-success" />
+                    <FileText className="h-6 w-6 text-success" />
                   </div>
-                  <h3 className="font-semibold mb-2">Análise Inteligente</h3>
+                  <h3 className="font-semibold mb-2">Checklists</h3>
                   <p className="text-sm text-muted-foreground">
-                    Obtenha insights valiosos sobre potencial e valor dos clientes
+                    Processos estruturados e qualificação
                   </p>
                 </CardContent>
               </Card>
             </div>
 
             {/* Import Section */}
-            <CSVImport onImport={handleImport} />
+            <MultiCSVImport onImport={handleImport} />
 
-            {clients.length > 0 && (
+            {importedData.length > 0 && (
               <div className="text-center pt-4">
                 <Button 
                   onClick={() => setShowImport(false)}
                   size="lg"
                   className="shadow-hover"
                 >
-                  <Briefcase className="h-4 w-4 mr-2" />
-                  Ver Dashboard de Clientes
+                  <BarChart3 className="h-4 w-4 mr-2" />
+                  Ver Dados Importados
                 </Button>
               </div>
             )}
           </div>
         ) : (
-          <ClientDashboard clients={clients} />
+          <DataViewer 
+            data={importedData} 
+            onClose={() => setShowImport(true)} 
+          />
         )}
       </div>
     </div>
