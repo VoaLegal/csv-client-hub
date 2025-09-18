@@ -28,9 +28,10 @@ interface DashboardProps {
   importedData: ImportedData[];
   onImport: (data: ImportedData) => void;
   onClose: () => void;
+  onUpdateData: (data: ImportedData[]) => void;
 }
 
-export const Dashboard: React.FC<DashboardProps> = ({ importedData, onImport, onClose }) => {
+export const Dashboard: React.FC<DashboardProps> = ({ importedData, onImport, onClose, onUpdateData }) => {
   const [activeTab, setActiveTab] = useState<string>('analytics');
   const [showImport, setShowImport] = useState(false);
   const [showForm, setShowForm] = useState(false);
@@ -237,11 +238,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ importedData, onImport, on
             onEdit={(id) => console.log('Edit ativo:', id)}
             onDelete={(id) => {
               // Remove from both imported and manual data
-              setImportedData(prev => prev.map(data => 
+              const updatedData = importedData.map(data => 
                 data.type === 'ativos' 
                   ? { ...data, data: (data.data as AtivoClient[]).filter(item => item.id !== id) }
                   : data
-              ));
+              );
+              onUpdateData(updatedData);
               setManualAtivos(prev => prev.filter(item => item.id !== id));
             }}
           />
@@ -253,11 +255,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ importedData, onImport, on
             onEdit={(id) => console.log('Edit cliente:', id)}
             onDelete={(id) => {
               // Remove from both imported and manual data
-              setImportedData(prev => prev.map(data => 
+              const updatedData = importedData.map(data => 
                 data.type === 'clientes' 
                   ? { ...data, data: (data.data as SimpleClient[]).filter(item => item.id !== id) }
                   : data
-              ));
+              );
+              onUpdateData(updatedData);
               setManualClientes(prev => prev.filter(item => item.id !== id));
             }}
           />
@@ -269,11 +272,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ importedData, onImport, on
             onEdit={(id) => console.log('Edit portfolio:', id)}
             onDelete={(id) => {
               // Remove from both imported and manual data
-              setImportedData(prev => prev.map(data => 
+              const updatedData = importedData.map(data => 
                 data.type === 'portfolio' 
                   ? { ...data, data: (data.data as PortfolioItem[]).filter(item => item.id !== id) }
                   : data
-              ));
+              );
+              onUpdateData(updatedData);
               setManualPortfolio(prev => prev.filter(item => item.id !== id));
             }}
           />

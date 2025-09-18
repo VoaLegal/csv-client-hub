@@ -48,7 +48,7 @@ export function ComprehensiveDashboard({ importedData }: ComprehensiveDashboardP
 
   // Client distribution
   const clientsByType = allClients.reduce((acc, client) => {
-    let type = 'tipo' in client ? client.tipo : client.tipoContrato;
+    let type = 'tipo' in client ? client.tipo : ('tipoContrato' in client ? client.tipoContrato : undefined);
     type = type || 'Não definido';
     acc[type] = (acc[type] || 0) + 1;
     return acc;

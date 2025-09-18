@@ -74,10 +74,10 @@ export interface SimpleClient {
   tipo?: string;
 }
 
-export type CSVDataType = 'portfolio' | 'ativos' | 'clientes' | 'unknown';
+export type CSVDataType = 'portfolio' | 'ativos' | 'clientes' | 'kanban' | 'checklist' | 'unknown';
 
 export interface ImportedData {
   type: CSVDataType;
-  data: PortfolioItem[] | AtivoClient[] | SimpleClient[];
+  data: PortfolioItem[] | AtivoClient[] | SimpleClient[] | KanbanTask[] | ChecklistFocal[];
   totalImported: number;
 }
