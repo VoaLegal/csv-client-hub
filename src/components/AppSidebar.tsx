@@ -42,11 +42,9 @@ export function AppSidebar() {
 
   return (
     <Sidebar className={collapsed ? "w-14" : "w-64"} collapsible="icon">
-      <SidebarHeader className="border-b">
+      <SidebarHeader className="border-b relative">
         <div className="flex items-center space-x-3 p-4">
-          <div className="h-8 w-8 rounded-lg bg-accent flex items-center justify-center shrink-0">
-            <Database className="h-5 w-5 text-accent-foreground" />
-          </div>
+          
           {!collapsed && (
             <div>
               <h2 className="text-lg font-bold">Sistema VLMA</h2>
@@ -54,6 +52,7 @@ export function AppSidebar() {
             </div>
           )}
         </div>
+        <SidebarTrigger className="absolute -right-3 top-1/2 -translate-y-1/2 z-20 bg-accent border shadow-sm hover:bg-accent" />
       </SidebarHeader>
 
       <SidebarContent>
@@ -76,34 +75,39 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="border-t p-4">
-        {!collapsed && (
-          <div className="space-y-2">
-            <p className="text-sm font-medium truncate">{user?.email}</p>
-            <Button 
-              onClick={handleSignOut}
-              variant="outline" 
-              size="sm" 
-              className="w-full justify-start"
-            >
-              <LogOut className="mr-2 h-4 w-4" />
-              Sair
-            </Button>
-          </div>
-        )}
-        {collapsed && (
-          <Button 
-            onClick={handleSignOut}
-            variant="outline" 
-            size="sm"
-            className="w-full p-2"
-          >
-            <LogOut className="h-4 w-4" />
-          </Button>
-        )}
+      <SidebarFooter className="border-t">
+        <div className="p-4">
+          {!collapsed ? (
+            <div className="space-y-3">
+              <div className="text-sm">
+                <p className="font-medium truncate">{user?.email}</p>
+                <p className="text-xs text-muted-foreground">Sistema VLMA</p>
+              </div>
+              <Button
+                onClick={handleSignOut}
+                variant="ghost"
+                size="sm"
+                className="w-full justify-start hover:bg-destructive/10 hover:text-destructive"
+              >
+                <LogOut className="mr-2 h-4 w-4" />
+                Sair
+              </Button>
+            </div>
+          ) : (
+            <div className="flex justify-center">
+              <Button
+                onClick={handleSignOut}
+                variant="ghost"
+                size="sm"
+                className="p-2 hover:bg-destructive/10 hover:text-destructive"
+                title="Sair"
+              >
+                <LogOut className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
+        </div>
       </SidebarFooter>
-
-      <SidebarTrigger className="absolute -right-4 top-4 z-10" />
     </Sidebar>
   );
 }

@@ -6,6 +6,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { PieChart as RechartsPieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
+import BrazilMap from '@/components/BrazilMap';
+import { empresaService, clienteService, type Empresa } from '@/lib/database';
 
 interface Cliente {
   id: number;
@@ -47,27 +49,38 @@ export default function Dashboard() {
   });
   const [loading, setLoading] = useState(true);
   const [selectedEstado, setSelectedEstado] = useState<string | null>(null);
+  const [userCompany, setUserCompany] = useState<Empresa | null>(null);
 
   useEffect(() => {
     if (user) {
-      fetchDashboardData();
+      initializeDashboard();
     }
   }, [user]);
 
-  const fetchDashboardData = async () => {
-    try {
-      const { data: clientes, error } = await supabase
-        .from('clientes')
-        .select('*');
+  const initializeDashboard = async () => {
+    if (!user) return;
 
-      if (error) {
-        toast.error('Erro ao carregar dados do dashboard');
+    try {
+      const company = await empresaService.getUserCompany(user.id);
+      if (!company) {
+        toast.error('Empresa não encontrada para este usuário');
+        setLoading(false);
         return;
       }
 
-      if (clientes) {
-        calculateStats(clientes);
-      }
+      setUserCompany(company);
+      await fetchDashboardData(company.id);
+    } catch (error) {
+      console.error('Error initializing dashboard:', error);
+      toast.error('Erro ao carregar dados do dashboard');
+      setLoading(false);
+    }
+  };
+
+  const fetchDashboardData = async (empresaId: number) => {
+    try {
+      const clientes = await clienteService.getByCompanyId(empresaId);
+      calculateStats(clientes);
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
       toast.error('Erro ao carregar dados do dashboard');
@@ -178,15 +191,15 @@ export default function Dashboard() {
     });
   };
 
-  const renderCustomTooltip = (data: any[], total: number) => ({ active, payload }: any) => {
+  const renderCustomTooltip = (data: { name: string; value: number }[], total: number) => ({ active, payload }: { active: boolean; payload: { name: string; value: number }[] }) => {
     if (active && payload && payload.length) {
-      const data = payload[0];
-      const percentage = ((data.value / total) * 100).toFixed(1);
+      const itemData = payload[0];
+      const percentage = ((itemData.value / total) * 100).toFixed(1);
       return (
         <div className="bg-background border rounded-lg p-3 shadow-lg">
-          <p className="font-medium">{data.name}</p>
-          <p className="text-primary">
-            {data.value} ({percentage}%)
+          <p className="font-medium">{itemData.name}</p>
+          <p className="text-primary font-semibold">
+            {itemData.value} clientes ({percentage}%)
           </p>
         </div>
       );
@@ -269,13 +282,49 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      {/* Mapa do Brasil simplificado e Segmentos */}
+      {/* Mapa do Brasil interativo */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center">
+            <MapPin className="mr-2 h-5 w-5" />
+            Mapa do Brasil - Distribuição de Clientes
+          </CardTitle>
+          <CardDescription>
+            Clique em um estado para ver as cidades. Cores indicam concentração de clientes.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <BrazilMap
+            statesData={stats.estadosData}
+            onStateClick={(stateName) => setSelectedEstado(selectedEstado === stateName ? null : stateName)}
+            selectedState={selectedEstado}
+          />
+
+          {selectedEstado && stats.estadosData[selectedEstado] && (
+            <div className="mt-4 p-4 bg-muted/30 rounded-lg">
+              <h4 className="font-medium mb-2">Cidades em {selectedEstado} ({stats.estadosData[selectedEstado].count} clientes):</h4>
+              <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto">
+                {Object.entries(stats.estadosData[selectedEstado].cities)
+                  .sort(([,a], [,b]) => b - a)
+                  .map(([cidade, count]) => (
+                  <div key={cidade} className="flex justify-between text-sm">
+                    <span>{cidade}</span>
+                    <span className="text-muted-foreground">{count}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Segmentos e outras métricas */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center">
               <MapPin className="mr-2 h-5 w-5" />
-              Distribuição por Estados
+              Top 10 Estados
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -296,22 +345,6 @@ export default function Dashboard() {
                   <Badge variant="secondary">{data.count}</Badge>
                 </div>
               ))}
-              
-              {selectedEstado && stats.estadosData[selectedEstado] && (
-                <div className="mt-4 p-4 bg-muted/30 rounded-lg">
-                  <h4 className="font-medium mb-2">Cidades em {selectedEstado}:</h4>
-                  <div className="space-y-1">
-                    {Object.entries(stats.estadosData[selectedEstado].cities)
-                      .sort(([,a], [,b]) => b - a)
-                      .map(([cidade, count]) => (
-                      <div key={cidade} className="flex justify-between text-sm">
-                        <span>{cidade}</span>
-                        <span className="text-muted-foreground">{count}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
           </CardContent>
         </Card>
@@ -331,7 +364,7 @@ export default function Dashboard() {
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                  label={({ name, percent }) => `${(percent * 100).toFixed(0)}%`}
                   outerRadius={80}
                   fill="#8884d8"
                   dataKey="value"

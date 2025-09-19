@@ -37,6 +37,7 @@ export type Database = {
           area: string[] | null
           cidade: string | null
           contato_principal: string | null
+          cpf_cnpj: string | null
           created_at: string
           data_inicio: string | null
           email: string | null
@@ -61,6 +62,7 @@ export type Database = {
           area?: string[] | null
           cidade?: string | null
           contato_principal?: string | null
+          cpf_cnpj?: string | null
           created_at?: string
           data_inicio?: string | null
           email?: string | null
@@ -85,6 +87,7 @@ export type Database = {
           area?: string[] | null
           cidade?: string | null
           contato_principal?: string | null
+          cpf_cnpj?: string | null
           created_at?: string
           data_inicio?: string | null
           email?: string | null
@@ -150,18 +153,21 @@ export type Database = {
           created_at: string
           id: number
           name: string | null
+          product: boolean | null
         }
         Insert: {
           area_id?: number | null
           created_at?: string
           id?: number
           name?: string | null
+          product?: boolean | null
         }
         Update: {
           area_id?: number | null
           created_at?: string
           id?: number
           name?: string | null
+          product?: boolean | null
         }
         Relationships: [
           {

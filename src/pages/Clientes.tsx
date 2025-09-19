@@ -3,31 +3,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Users, Search, Plus, MapPin, Building2, Mail, Phone } from 'lucide-react';
+import { Users, Search, Plus, MapPin, Building2, Mail, Phone, Upload, Edit2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import NovoClienteModal from '@/components/NovoClienteModal';
+import CSVUploadModal from '@/components/CSVUploadModal';
+import EditClienteModal from '@/components/EditClienteModal';
+import { clienteService, empresaService, type Cliente as ClienteType, type Empresa } from '@/lib/database';
 
-interface Cliente {
-  id: number;
-  "nome_ cliente": string | null;
-  contato_principal: string | null;
-  porte_empresa: string | null;
-  cidade: string | null;
-  estado: string | null;
-  pais: string | null;
-  area: string[] | null;
-  servico_prestado: string[] | null;
-  produtos_vendidos: string[] | null;
-  ocupacao_cliente: string | null;
-  whatsapp: string | null;
-  email: string | null;
-  tipo_contrato: string | null;
-  data_inicio: string | null;
-  grupo_economico: string | null;
-  potencial: string | null;
-  nota_potencial: string | null;
-}
+// Using the Cliente type from database service
+type Cliente = ClienteType;
 
 export default function Clientes() {
   const { user } = useAuth();
@@ -35,10 +21,11 @@ export default function Clientes() {
   const [filteredClientes, setFilteredClientes] = useState<Cliente[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [userCompany, setUserCompany] = useState<Empresa | null>(null);
 
   useEffect(() => {
     if (user) {
-      fetchClientes();
+      initializeData();
     }
   }, [user]);
 
@@ -54,22 +41,31 @@ export default function Clientes() {
     setFilteredClientes(filtered);
   }, [searchTerm, clientes]);
 
-  const fetchClientes = async () => {
-    try {
-      const { data: clientes, error } = await supabase
-        .from('clientes')
-        .select('*')
-        .order('"nome_ cliente"', { ascending: true });
+  const initializeData = async () => {
+    if (!user) return;
 
-      if (error) {
-        toast.error('Erro ao carregar clientes');
+    try {
+      const company = await empresaService.getUserCompany(user.id);
+      if (!company) {
+        toast.error('Empresa não encontrada para este usuário');
+        setLoading(false);
         return;
       }
 
-      if (clientes) {
-        setClientes(clientes);
-        setFilteredClientes(clientes);
-      }
+      setUserCompany(company);
+      await fetchClientes(company.id);
+    } catch (error) {
+      console.error('Error initializing data:', error);
+      toast.error('Erro ao carregar dados');
+      setLoading(false);
+    }
+  };
+
+  const fetchClientes = async (empresaId: number) => {
+    try {
+      const clientes = await clienteService.getByCompanyId(empresaId);
+      setClientes(clientes);
+      setFilteredClientes(clientes);
     } catch (error) {
       console.error('Error fetching clientes:', error);
       toast.error('Erro ao carregar clientes');
@@ -122,10 +118,21 @@ export default function Clientes() {
             className="pl-9"
           />
         </div>
-        <Button>
-          <Plus className="mr-2 h-4 w-4" />
-          Novo Cliente
-        </Button>
+        <div className="flex gap-2">
+          <NovoClienteModal onClienteCreated={() => userCompany && fetchClientes(userCompany.id)}>
+            <Button>
+              <Plus className="mr-2 h-4 w-4" />
+              Novo Cliente
+            </Button>
+          </NovoClienteModal>
+
+          <CSVUploadModal onClientesImported={() => userCompany && fetchClientes(userCompany.id)}>
+            <Button variant="outline">
+              <Upload className="mr-2 h-4 w-4" />
+              Importar CSV
+            </Button>
+          </CSVUploadModal>
+        </div>
       </div>
 
       {/* Clientes grid */}
@@ -143,10 +150,21 @@ export default function Clientes() {
                   : 'Comece adicionando seu primeiro cliente'}
               </p>
               {!searchTerm && (
-                <Button>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Adicionar Cliente
-                </Button>
+                <div className="flex gap-2 justify-center">
+                  <NovoClienteModal onClienteCreated={() => userCompany && fetchClientes(userCompany.id)}>
+                    <Button>
+                      <Plus className="mr-2 h-4 w-4" />
+                      Adicionar Cliente
+                    </Button>
+                  </NovoClienteModal>
+
+                  <CSVUploadModal onClientesImported={() => userCompany && fetchClientes(userCompany.id)}>
+                    <Button variant="outline">
+                      <Upload className="mr-2 h-4 w-4" />
+                      Importar CSV
+                    </Button>
+                  </CSVUploadModal>
+                </div>
               )}
             </CardContent>
           </Card>
@@ -167,6 +185,16 @@ export default function Clientes() {
                     )}
                   </div>
                   <div className="flex flex-col space-y-2">
+                    <div className="flex items-center space-x-2">
+                      <EditClienteModal
+                        cliente={cliente}
+                        onClienteUpdated={() => userCompany && fetchClientes(userCompany.id)}
+                      >
+                        <Button variant="ghost" size="sm" className="p-2 h-8 w-8">
+                          <Edit2 className="h-4 w-4" />
+                        </Button>
+                      </EditClienteModal>
+                    </div>
                     {cliente.porte_empresa && (
                       <Badge variant={cliente.porte_empresa.toLowerCase().includes('pj') ? 'default' : 'secondary'}>
                         {cliente.porte_empresa}
