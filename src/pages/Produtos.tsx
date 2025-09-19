@@ -198,10 +198,7 @@ export default function Produtos() {
             className="pl-9"
           />
         </div>
-        <Button>
-          <Plus className="mr-2 h-4 w-4" />
-          Novo Item
-        </Button>
+        
       </div>
 
       {/* Distribuição por áreas */}
