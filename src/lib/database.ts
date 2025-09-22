@@ -2,7 +2,8 @@ import { supabase } from '@/integrations/supabase/client';
 import type { Tables } from '@/integrations/supabase/types';
 
 export type Area = Tables<'areas'>;
-export type ProductService = Tables<'products_services'>;
+export type Servico = Tables<'servicos'>;
+export type Produto = Tables<'produtos'>;
 export type Empresa = Tables<'empresas'>;
 export type Cliente = Tables<'clientes'>;
 
@@ -37,96 +38,69 @@ export const areaService = {
   }
 };
 
-export const productServiceService = {
-  async getAll(): Promise<ProductService[]> {
+export const servicoService = {
+  async getAll(): Promise<Servico[]> {
     const { data, error } = await supabase
-      .from('products_services')
-      .select('id, created_at, area_id, name, product')
+      .from('servicos')
+      .select('id, created_at, name, area_id')
       .order('name');
 
     if (error) {
-      console.error('Error fetching products/services:', error);
+      console.error('Error fetching servicos:', error);
       return [];
     }
 
     return data || [];
   },
 
-  async getByAreaId(areaId: number): Promise<ProductService[]> {
+  async getByAreaId(areaId: number): Promise<Servico[]> {
     const { data, error } = await supabase
-      .from('products_services')
-      .select('id, created_at, area_id, name, product')
+      .from('servicos')
+      .select('id, created_at, name, area_id')
       .eq('area_id', areaId)
       .order('name');
 
     if (error) {
-      console.error('Error fetching products/services by area:', error);
+      console.error('Error fetching servicos by area:', error);
       return [];
     }
 
     return data || [];
-  },
+  }
+};
 
-  async getProducts(): Promise<ProductService[]> {
+export interface ProdutoWithServico extends Produto {
+  servicos?: { id: number; name: string | null; area_id: number | null } | null;
+}
+
+export const produtoService = {
+  async getAllWithServico(): Promise<ProdutoWithServico[]> {
     const { data, error } = await supabase
-      .from('products_services')
-      .select('id, created_at, area_id, name, product')
-      .eq('product', true)
+      .from('produtos')
+      .select('id, created_at, name, servico_id, servicos ( id, name, area_id )')
       .order('name');
 
     if (error) {
-      console.error('Error fetching products:', error);
+      console.error('Error fetching produtos:', error);
       return [];
     }
 
-    return data || [];
+    return (data as unknown as ProdutoWithServico[]) || [];
   },
 
-  async getServices(): Promise<ProductService[]> {
+  async getByServicoId(servicoId: number): Promise<ProdutoWithServico[]> {
     const { data, error } = await supabase
-      .from('products_services')
-      .select('id, created_at, area_id, name, product')
-      .eq('product', false)
+      .from('produtos')
+      .select('id, created_at, name, servico_id, servicos ( id, name, area_id )')
+      .eq('servico_id', servicoId)
       .order('name');
 
     if (error) {
-      console.error('Error fetching services:', error);
+      console.error('Error fetching produtos by servico:', error);
       return [];
     }
 
-    return data || [];
-  },
-
-  async getProductsByAreaId(areaId: number): Promise<ProductService[]> {
-    const { data, error } = await supabase
-      .from('products_services')
-      .select('id, created_at, area_id, name, product')
-      .eq('area_id', areaId)
-      .eq('product', true)
-      .order('name');
-
-    if (error) {
-      console.error('Error fetching products by area:', error);
-      return [];
-    }
-
-    return data || [];
-  },
-
-  async getServicesByAreaId(areaId: number): Promise<ProductService[]> {
-    const { data, error } = await supabase
-      .from('products_services')
-      .select('id, created_at, area_id, name, product')
-      .eq('area_id', areaId)
-      .eq('product', false)
-      .order('name');
-
-    if (error) {
-      console.error('Error fetching services by area:', error);
-      return [];
-    }
-
-    return data || [];
+    return (data as unknown as ProdutoWithServico[]) || [];
   }
 };
 
@@ -216,13 +190,13 @@ export const clienteService = {
 };
 
 export const combinedService = {
-  async getAreasWithProductsServices() {
+  async getAreasWithServicos() {
     const areas = await areaService.getAll();
-    const productsServices = await productServiceService.getAll();
+    const servicos = await servicoService.getAll();
 
     return areas.map(area => ({
       ...area,
-      products_services: productsServices.filter(ps => ps.area_id === area.id)
+      servicos: servicos.filter(s => s.area_id === area.id)
     }));
   }
 };

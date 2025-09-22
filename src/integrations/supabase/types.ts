@@ -179,6 +179,64 @@ export type Database = {
           },
         ]
       }
+      servicos: {
+        Row: {
+          id: number
+          created_at: string
+          name: string | null
+          area_id: number | null
+        }
+        Insert: {
+          id?: number
+          created_at?: string
+          name?: string | null
+          area_id?: number | null
+        }
+        Update: {
+          id?: number
+          created_at?: string
+          name?: string | null
+          area_id?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "servicos_area_id_fkey"
+            columns: ["area_id"]
+            isOneToOne: false
+            referencedRelation: "areas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      produtos: {
+        Row: {
+          id: number
+          created_at: string
+          name: string | null
+          servico_id: number | null
+        }
+        Insert: {
+          id?: number
+          created_at?: string
+          name?: string | null
+          servico_id?: number | null
+        }
+        Update: {
+          id?: number
+          created_at?: string
+          name?: string | null
+          servico_id?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "produtos_servico_id_fkey"
+            columns: ["servico_id"]
+            isOneToOne: false
+            referencedRelation: "servicos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       users: {
         Row: {
           created_at: string

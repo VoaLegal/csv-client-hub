@@ -4,7 +4,7 @@ export interface ClienteCSVTemplate {
   grupo_economico: string;
   cpf_cnpj: string;
   area: string;
-  servico_prestado: string;
+  servico_prestado: string; // manter por compatibilidade (opcional)
   produtos_vendidos: string;
   potencial: string;
   nota_potencial: string;
@@ -50,7 +50,7 @@ export const CSV_TEMPLATE_EXAMPLE: ClienteCSVTemplate = {
   grupo_economico: 'Grupo ABC',
   cpf_cnpj: '11.222.333/0001-81',
   area: 'Tecnologia|Consultoria',
-  servico_prestado: 'Desenvolvimento|Suporte',
+  servico_prestado: 'Desenvolvimento de Software|Consultoria em TI',
   produtos_vendidos: 'Software|Licenças',
   potencial: 'Alto',
   nota_potencial: '8',
@@ -68,26 +68,26 @@ export const CSV_TEMPLATE_EXAMPLE: ClienteCSVTemplate = {
 };
 
 export const CSV_FIELD_DESCRIPTIONS = {
-  nome_cliente: 'Nome completo do cliente ou razão social (obrigatório)',
-  contato_principal: 'Nome da pessoa de contato principal',
-  grupo_economico: 'Nome do grupo econômico ou holding',
-  cpf_cnpj: 'CPF ou CNPJ do cliente (ex: 000.000.000-00 ou 00.000.000/0000-00)',
-  area: 'Áreas de atuação separadas por pipe (ex: Tecnologia|Consultoria)',
-  servico_prestado: 'Serviços prestados separados por pipe (ex: Desenvolvimento|Suporte)',
-  produtos_vendidos: 'Produtos vendidos separados por pipe (ex: Software|Licenças)',
-  potencial: 'Potencial do cliente (ex: Alto, Médio, Baixo)',
-  nota_potencial: 'Nota do potencial de 1 a 10',
-  data_inicio: 'Data de início no formato AAAA-MM-DD (ex: 2024-01-15)',
-  cidade: 'Cidade onde está localizado',
-  estado: 'Estado usando sigla (ex: SP, RJ, MG)',
-  pais: 'País (padrão: Brasil)',
-  relacionamento_exterior: 'true ou false para indicar relacionamento no exterior',
-  porte_empresa: 'Porte da empresa (ex: Microempresa, Pequena Empresa, Média Empresa, Grande Empresa, Pessoa Física, MEI)',
-  quem_trouxe: 'Quem trouxe o cliente',
-  tipo_contrato: 'Tipo de contrato (ex: Prestação de Serviços, Venda de Produtos, Consultoria)',
-  ocupacao_cliente: 'Ocupação ou segmento do cliente',
-  whatsapp: 'Número do WhatsApp com formato (xx) xxxxx-xxxx',
-  email: 'Endereço de email válido'
+  nome_cliente: 'Nome completo do cliente ou razão social (OBRIGATÓRIO)',
+  contato_principal: 'Nome da pessoa de contato principal (opcional)',
+  grupo_economico: 'Nome do grupo econômico ou holding (opcional)',
+  cpf_cnpj: 'CPF ou CNPJ do cliente (opcional - ex: 000.000.000-00 ou 00.000.000/0000-00)',
+  area: 'Áreas de atuação separadas por pipe (opcional - ex: Tecnologia|Consultoria)',
+  servico_prestado: 'Serviços prestados separados por pipe (opcional - ex: Desenvolvimento|Consultoria)',
+  produtos_vendidos: 'Produtos vendidos separados por pipe (opcional - ex: Software|Licenças)',
+  potencial: 'Potencial do cliente (opcional - ex: Alto, Médio, Baixo)',
+  nota_potencial: 'Nota do potencial de 1 a 10 (opcional)',
+  data_inicio: 'Data de início no formato AAAA-MM-DD (opcional - ex: 2024-01-15)',
+  cidade: 'Cidade onde está localizado (opcional)',
+  estado: 'Estado usando sigla (opcional - ex: SP, RJ, MG)',
+  pais: 'País (opcional - padrão: Brasil)',
+  relacionamento_exterior: 'true ou false para indicar relacionamento no exterior (opcional)',
+  porte_empresa: 'Porte da empresa (opcional - ex: Microempresa, Pequena Empresa, Média Empresa, Grande Empresa, Pessoa Física, MEI)',
+  quem_trouxe: 'Quem trouxe o cliente (opcional)',
+  tipo_contrato: 'Tipo de contrato (opcional - ex: Prestação de Serviços, Venda de Produtos, Consultoria)',
+  ocupacao_cliente: 'Ocupação ou segmento do cliente (opcional)',
+  whatsapp: 'Número do WhatsApp com formato (xx) xxxxx-xxxx (opcional)',
+  email: 'Endereço de email válido (opcional)'
 };
 
 export function generateCSVTemplate(): string {
@@ -118,6 +118,9 @@ export function generateInstructionsFile(): string {
     'INSTRUÇÕES PARA PREENCHIMENTO DO CSV DE CLIENTES',
     '=' .repeat(50),
     '',
+    'IMPORTANTE: Apenas o campo "nome_cliente" é obrigatório!',
+    'Todos os outros campos são opcionais e podem ficar vazios.',
+    '',
     'FORMATO GERAL:',
     '- Para campos com múltiplos valores (area, servico_prestado, produtos_vendidos), use pipe (|) como separador',
     '',
@@ -132,7 +135,6 @@ export function generateInstructionsFile(): string {
   instructions.push('');
   instructions.push('EXEMPLOS DE PREENCHIMENTO:');
   instructions.push('- area: "Tecnologia|Consultoria|Marketing"');
-  instructions.push('- servico_prestado: "Desenvolvimento|Suporte|Treinamento"');
   instructions.push('- produtos_vendidos: "Software|Licenças|Hardware"');
   instructions.push('- data_inicio: "2024-01-15" (sempre AAAA-MM-DD)');
   instructions.push('- relacionamento_exterior: "true" ou "false" (sem aspas)');

@@ -335,7 +335,7 @@ export function validateCSVData(csvContent: string): ValidationResult {
       // If row has no validation errors for this row, add to valid rows
       const rowErrors = errors.filter(e => e.row === rowIndex);
       if (rowErrors.length === 0) {
-        // Convert array fields (area, servico_prestado, produtos_vendidos) - using pipe separator
+        // Converter arrays (area, servico_prestado, produtos_vendidos) - pipe
         const processedData = {
           ...rowData,
           area: rowData.area ? rowData.area.split('|').map((s: string) => s.trim()).filter(Boolean) : [],

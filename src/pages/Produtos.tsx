@@ -12,8 +12,10 @@ interface Produto {
   id: number;
   name: string | null;
   created_at: string;
-  area_id: number | null;
-  area_name?: string;
+  servico_id: number | null;
+  servico_name?: string | null;
+  area_id?: number | null;
+  area_name?: string | null;
 }
 
 interface Area {
@@ -61,15 +63,20 @@ export default function Produtos() {
         setAreas(areasData);
       }
 
-      // Fetch products with area names
+      // Fetch produtos joined with servicos and areas
       const { data: produtosData, error: produtosError } = await supabase
-        .from('products_services')
+        .from('produtos')
         .select(`
           id,
           name,
           created_at,
-          area_id,
-          areas (name)
+          servico_id,
+          servicos (
+            id,
+            name,
+            area_id,
+            areas ( name )
+          )
         `)
         .order('name', { ascending: true });
 
@@ -79,12 +86,16 @@ export default function Produtos() {
       }
 
       if (produtosData) {
-        // Transform the data to include area_name
-        const transformedData = produtosData.map(produto => ({
-          ...produto,
-          area_name: produto.areas?.name || null
+        const transformedData: Produto[] = produtosData.map((produto: any) => ({
+          id: produto.id,
+          name: produto.name,
+          created_at: produto.created_at,
+          servico_id: produto.servico_id,
+          servico_name: produto.servicos?.name ?? null,
+          area_id: produto.servicos?.area_id ?? null,
+          area_name: produto.servicos?.areas?.name ?? null,
         }));
-        
+
         setProdutos(transformedData);
         setFilteredProdutos(transformedData);
       }
@@ -152,7 +163,7 @@ export default function Produtos() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-base">Total de Produtos/Serviços</CardTitle>
+          <CardTitle className="text-base">Total de Produtos</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{produtos.length}</div>
@@ -177,7 +188,7 @@ export default function Produtos() {
               <div>
                 <div className="text-lg font-semibold">{areaStats[0].name}</div>
                 <div className="text-sm text-muted-foreground">
-                  {areaStats[0].count} produtos/serviços
+                  {areaStats[0].count} produtos
                 </div>
               </div>
             ) : (
@@ -231,19 +242,19 @@ export default function Produtos() {
 
       {/* Lista de produtos */}
       <div className="space-y-4">
-        <h2 className="text-xl font-semibold">Todos os Produtos e Serviços</h2>
+        <h2 className="text-xl font-semibold">Todos os Produtos</h2>
         
         {filteredProdutos.length === 0 ? (
           <Card className="text-center py-12">
             <CardContent>
               <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
               <h3 className="text-lg font-semibold mb-2">
-                {searchTerm ? 'Nenhum item encontrado' : 'Nenhum produto ou serviço cadastrado'}
+                {searchTerm ? 'Nenhum item encontrado' : 'Nenhum produto cadastrado'}
               </h3>
               <p className="text-muted-foreground mb-4">
                 {searchTerm 
                   ? 'Tente ajustar os termos de pesquisa' 
-                  : 'Comece adicionando seus produtos e serviços'}
+                  : 'Comece adicionando seus produtos'}
               </p>
               {!searchTerm && (
                 <Button>

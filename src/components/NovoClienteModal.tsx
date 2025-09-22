@@ -11,7 +11,7 @@ import { Plus, X, Users, Building2, MapPin, Phone, Mail, Calendar, DollarSign } 
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { areaService, productServiceService, empresaService, clienteService, type Area, type ProductService, type Empresa } from '@/lib/database';
+import { areaService, servicoService, produtoService, clienteService, empresaService, type Area, type Servico, type Empresa, type ProdutoWithServico } from '@/lib/database';
 
 interface NovoClienteModalProps {
   children: React.ReactNode;
@@ -94,10 +94,11 @@ export default function NovoClienteModal({ children, onClienteCreated }: NovoCli
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState<ClienteFormData>(initialFormData);
   const [areas, setAreas] = useState<Area[]>([]);
-  const [services, setServices] = useState<ProductService[]>([]);
-  const [products, setProducts] = useState<ProductService[]>([]);
+  const [services, setServices] = useState<Servico[]>([]);
+  const [products, setProducts] = useState<ProdutoWithServico[]>([]);
   const [selectedAreaForService, setSelectedAreaForService] = useState('all');
   const [selectedAreaForProduct, setSelectedAreaForProduct] = useState('all');
+  const [selectedServiceForProduct, setSelectedServiceForProduct] = useState('all');
   const [userCompany, setUserCompany] = useState<Empresa | null>(null);
 
   useEffect(() => {
@@ -107,8 +108,8 @@ export default function NovoClienteModal({ children, onClienteCreated }: NovoCli
       try {
         const [areasData, servicesData, productsData, companyData] = await Promise.all([
           areaService.getAll(),
-          productServiceService.getServices(),
-          productServiceService.getProducts(),
+          servicoService.getAll(),
+          produtoService.getAllWithServico(),
           empresaService.getUserCompany(user.id)
         ]);
         setAreas(areasData);
@@ -194,6 +195,7 @@ export default function NovoClienteModal({ children, onClienteCreated }: NovoCli
       setFormData(initialFormData);
       setSelectedAreaForService('all');
       setSelectedAreaForProduct('all');
+      setSelectedServiceForProduct('all');
       setOpen(false);
 
       if (onClienteCreated) {
@@ -486,11 +488,11 @@ export default function NovoClienteModal({ children, onClienteCreated }: NovoCli
             </div>
           </div>
 
-          {/* Produtos Vendidos */}
+          {/* Produtos Vendidos (seleção final) */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold">Produtos Vendidos</h3>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
               <Select
                 value={selectedAreaForProduct}
                 onValueChange={setSelectedAreaForProduct}
@@ -509,6 +511,25 @@ export default function NovoClienteModal({ children, onClienteCreated }: NovoCli
               </Select>
 
               <Select
+                value={selectedServiceForProduct}
+                onValueChange={setSelectedServiceForProduct}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Filtrar por serviço (opcional)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos os serviços</SelectItem>
+                  {services
+                    .filter(s => selectedAreaForProduct === 'all' || !selectedAreaForProduct || s.area_id?.toString() === selectedAreaForProduct)
+                    .map((service) => (
+                      <SelectItem key={service.id} value={service.id.toString()}>
+                        {service.name || 'Serviço sem nome'}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+
+              <Select
                 value=""
                 onValueChange={(value) => {
                   const product = products.find(p => p.id.toString() === value);
@@ -522,7 +543,11 @@ export default function NovoClienteModal({ children, onClienteCreated }: NovoCli
                 </SelectTrigger>
                 <SelectContent>
                   {products
-                    .filter(p => selectedAreaForProduct === 'all' || !selectedAreaForProduct || p.area_id?.toString() === selectedAreaForProduct)
+                    .filter(p => {
+                      const areaOk = selectedAreaForProduct === 'all' || !selectedAreaForProduct || p.servicos?.area_id?.toString() === selectedAreaForProduct;
+                      const servicoOk = selectedServiceForProduct === 'all' || !selectedServiceForProduct || p.servicos?.id?.toString() === selectedServiceForProduct;
+                      return areaOk && servicoOk;
+                    })
                     .map((product) => (
                       <SelectItem key={product.id} value={product.id.toString()}>
                         {product.name || 'Produto sem nome'}
