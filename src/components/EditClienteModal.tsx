@@ -133,14 +133,16 @@ export default function EditClienteModal({ children, cliente, onClienteUpdated }
       if (!user) return;
 
       try {
-        const [areasData, servicesData, productsData] = await Promise.all([
+        const [areasData, servicesData, productsData, companyData] = await Promise.all([
           areaService.getAll(),
           servicoService.getAll(),
-          produtoService.getAllWithServico()
+          produtoService.getAllWithServico(),
+          empresaService.getUserCompany(user.id)
         ]);
         setAreas(areasData);
         setServices(servicesData);
         setProducts(productsData);
+        setUserCompany(companyData);
       } catch (error) {
         console.error('Error loading data:', error);
         toast.error('Erro ao carregar dados');
