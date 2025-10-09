@@ -1,4 +1,9 @@
-import { CSV_TEMPLATE_HEADERS, ClienteCSVTemplate } from './csvTemplate';
+import { 
+  CSV_TEMPLATE_HEADERS_CLIENTES, 
+  CSV_TEMPLATE_HEADERS_CONTRATOS, 
+  ClienteCSVTemplate, 
+  ContratoCSVTemplate 
+} from './csvTemplate';
 
 export interface ValidationError {
   row: number;
@@ -10,11 +15,12 @@ export interface ValidationError {
 export interface ValidationResult {
   isValid: boolean;
   errors: ValidationError[];
-  validRows: ClienteCSVTemplate[];
+  validRows: ClienteCSVTemplate[] | ContratoCSVTemplate[];
   totalRows: number;
 }
 
-const REQUIRED_FIELDS = ['nome_cliente'];
+const REQUIRED_FIELDS_CLIENTES = ['nome_cliente'];
+const REQUIRED_FIELDS_CONTRATOS = ['email_cliente'];
 
 const VALID_ESTADOS = [
   'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA',
@@ -32,12 +38,31 @@ const VALID_PORTES_EMPRESA = [
 ];
 
 const VALID_TIPOS_CONTRATO = [
-  'Prestação de Serviços',
-  'Venda de Produtos',
-  'Consultoria',
-  'Assessoria',
-  'Manutenção',
-  'Licenciamento'
+  'fixo mensal',
+  'projeto',
+  'horas',
+  'pro labore',
+  'mensalidade de processo'
+];
+
+const VALID_SEGMENTOS_ECONOMICOS = [
+  'Agronegócio',
+  'Audiovisual',
+  'Bebida e Alimentos',
+  'Construção civil',
+  'Empreendimentos Imobiliários',
+  'Holding Patrimonial',
+  'Holding Familiar',
+  'Energia/Gás/Combustíveis',
+  'Fintechs',
+  'Bancos e IF',
+  'Comércio',
+  'Comércio eletrônico',
+  'Entretenimento e Eventos',
+  'Serviços Profissionais',
+  'Indústria',
+  'Empresas de tech',
+  'Saúde'
 ];
 
 export function parseCSV(csvContent: string): string[][] {
@@ -162,7 +187,7 @@ function validateCNPJ(cnpj: string): boolean {
   return true;
 }
 
-export function validateCSVData(csvContent: string): ValidationResult {
+export function validateCSVDataClientes(csvContent: string): ValidationResult {
   const errors: ValidationError[] = [];
   const validRows: ClienteCSVTemplate[] = [];
 
@@ -182,7 +207,7 @@ export function validateCSVData(csvContent: string): ValidationResult {
     const dataRows = rows.slice(1);
 
     // Validate headers
-    const missingHeaders = CSV_TEMPLATE_HEADERS.filter(header =>
+    const missingHeaders = CSV_TEMPLATE_HEADERS_CLIENTES.filter(header =>
       !headers.includes(header.toLowerCase())
     );
 
@@ -217,7 +242,7 @@ export function validateCSVData(csvContent: string): ValidationResult {
         rowData[headerName] = value;
 
         // Validate required fields
-        if (REQUIRED_FIELDS.includes(headerName) && !value) {
+        if (REQUIRED_FIELDS_CLIENTES.includes(headerName) && !value) {
           errors.push({
             row: rowIndex,
             field: headerName,
@@ -235,17 +260,6 @@ export function validateCSVData(csvContent: string): ValidationResult {
                 field: headerName,
                 value,
                 message: 'Email inválido'
-              });
-            }
-            break;
-
-          case 'data_inicio':
-            if (value && !validateDate(value)) {
-              errors.push({
-                row: rowIndex,
-                field: headerName,
-                value,
-                message: 'Data deve estar no formato AAAA-MM-DD'
               });
             }
             break;
@@ -305,6 +319,203 @@ export function validateCSVData(csvContent: string): ValidationResult {
             }
             break;
 
+          case 'segmento_economico':
+            if (value && !VALID_SEGMENTOS_ECONOMICOS.includes(value)) {
+              errors.push({
+                row: rowIndex,
+                field: headerName,
+                value,
+                message: `Segmento econômico inválido. Use um dos valores: ${VALID_SEGMENTOS_ECONOMICOS.join(', ')}`
+              });
+            }
+            break;
+        }
+      });
+
+      // If row has no validation errors for this row, add to valid rows
+      const rowErrors = errors.filter(e => e.row === rowIndex);
+      if (rowErrors.length === 0) {
+        const processedData = {
+          ...rowData,
+          relacionamento_exterior: rowData.relacionamento_exterior ? rowData.relacionamento_exterior.toLowerCase() === 'true' : false
+        };
+
+        validRows.push(processedData as ClienteCSVTemplate);
+      }
+    });
+
+    return {
+      isValid: errors.length === 0,
+      errors,
+      validRows,
+      totalRows: dataRows.length
+    };
+  } catch (error) {
+    return {
+      isValid: false,
+      errors: [{
+        row: 0,
+        field: 'file',
+        value: '',
+        message: `Erro ao processar arquivo: ${error instanceof Error ? error.message : 'Erro desconhecido'}`
+      }],
+      validRows: [],
+      totalRows: 0
+    };
+  }
+}
+
+export async function validateCSVDataContratosWithReferences(
+  csvContent: string,
+  clientes: any[],
+  areas: any[],
+  servicos: any[],
+  produtos: any[]
+): Promise<ValidationResult> {
+  const errors: ValidationError[] = [];
+  const validRows: ContratoCSVTemplate[] = [];
+
+  try {
+    const rows = parseCSV(csvContent);
+
+    if (rows.length === 0) {
+      return {
+        isValid: false,
+        errors: [{ row: 0, field: 'file', value: '', message: 'Arquivo CSV está vazio' }],
+        validRows: [],
+        totalRows: 0
+      };
+    }
+
+    const headers = rows[0].map(h => h.toLowerCase().trim());
+    const dataRows = rows.slice(1);
+
+    // Validate headers
+    const missingHeaders = CSV_TEMPLATE_HEADERS_CONTRATOS.filter(header =>
+      !headers.includes(header.toLowerCase())
+    );
+
+    if (missingHeaders.length > 0) {
+      errors.push({
+        row: 0,
+        field: 'headers',
+        value: headers.join(','),
+        message: `Colunas obrigatórias faltando: ${missingHeaders.join(', ')}`
+      });
+    }
+
+    // Validate each data row
+    dataRows.forEach((row, index) => {
+      const rowIndex = index + 2; // +2 because we skip header and arrays are 0-indexed
+
+      if (row.length !== headers.length) {
+        errors.push({
+          row: rowIndex,
+          field: 'structure',
+          value: row.join(','),
+          message: `Linha tem ${row.length} colunas, esperado ${headers.length}`
+        });
+        return;
+      }
+
+      const rowData: any = {};
+
+      headers.forEach((header, colIndex) => {
+        const value = row[colIndex]?.trim() || '';
+        const headerName = header.toLowerCase();
+        rowData[headerName] = value;
+
+        // Validate required fields
+        if (REQUIRED_FIELDS_CONTRATOS.includes(headerName) && !value) {
+          errors.push({
+            row: rowIndex,
+            field: headerName,
+            value,
+            message: `Campo obrigatório não pode estar vazio`
+          });
+        }
+
+        // Validate specific field formats
+        switch (headerName) {
+          case 'email_cliente':
+            if (value && !validateEmail(value)) {
+              errors.push({
+                row: rowIndex,
+                field: headerName,
+                value,
+                message: 'E-mail deve ter formato válido (ex: cliente@empresa.com)'
+              });
+            } else if (value) {
+              // Check if client exists
+              const clienteExists = clientes.some(c => c.email === value);
+              if (!clienteExists) {
+                errors.push({
+                  row: rowIndex,
+                  field: headerName,
+                  value,
+                  message: `Cliente com e-mail "${value}" não encontrado. Cadastre o cliente primeiro.`
+                });
+              }
+            }
+            break;
+
+          case 'area':
+            if (value) {
+              // Check if area exists
+              const areaExists = areas.some(a => a.name === value);
+              if (!areaExists) {
+                errors.push({
+                  row: rowIndex,
+                  field: headerName,
+                  value,
+                  message: `Área "${value}" não encontrada. Cadastre a área primeiro.`
+                });
+              }
+            }
+            break;
+
+          case 'servico':
+            if (value) {
+              // Check if service exists
+              const servicoExists = servicos.some(s => s.name === value);
+              if (!servicoExists) {
+                errors.push({
+                  row: rowIndex,
+                  field: headerName,
+                  value,
+                  message: `Serviço "${value}" não encontrado. Cadastre o serviço primeiro.`
+                });
+              }
+            }
+            break;
+
+          case 'produto':
+            if (value) {
+              // Check if product exists
+              const produtoExists = produtos.some(p => p.name === value);
+              if (!produtoExists) {
+                errors.push({
+                  row: rowIndex,
+                  field: headerName,
+                  value,
+                  message: `Produto "${value}" não encontrado. Cadastre o produto primeiro.`
+                });
+              }
+            }
+            break;
+
+          case 'data_inicio':
+          case 'data_fim':
+            if (value && !validateDate(value)) {
+              errors.push({
+                row: rowIndex,
+                field: headerName,
+                value,
+                message: 'Data deve estar no formato AAAA-MM-DD'
+              });
+            }
+            break;
+
           case 'tipo_contrato':
             if (value && !VALID_TIPOS_CONTRATO.includes(value)) {
               errors.push({
@@ -316,15 +527,15 @@ export function validateCSVData(csvContent: string): ValidationResult {
             }
             break;
 
-          case 'nota_potencial':
+          case 'valor_contrato':
             if (value) {
-              const nota = parseInt(value);
-              if (isNaN(nota) || nota < 1 || nota > 10) {
+              const valor = parseFloat(value);
+              if (isNaN(valor) || valor < 0) {
                 errors.push({
                   row: rowIndex,
                   field: headerName,
                   value,
-                  message: 'Nota deve ser um número entre 1 e 10'
+                  message: 'Valor deve ser um número decimal positivo (ex: 15000.00)'
                 });
               }
             }
@@ -335,16 +546,150 @@ export function validateCSVData(csvContent: string): ValidationResult {
       // If row has no validation errors for this row, add to valid rows
       const rowErrors = errors.filter(e => e.row === rowIndex);
       if (rowErrors.length === 0) {
-        // Converter arrays (area, servico_prestado, produtos_vendidos) - pipe
         const processedData = {
           ...rowData,
-          area: rowData.area ? rowData.area.split('|').map((s: string) => s.trim()).filter(Boolean) : [],
-          servico_prestado: rowData.servico_prestado ? rowData.servico_prestado.split('|').map((s: string) => s.trim()).filter(Boolean) : [],
-          produtos_vendidos: rowData.produtos_vendidos ? rowData.produtos_vendidos.split('|').map((s: string) => s.trim()).filter(Boolean) : [],
-          relacionamento_exterior: rowData.relacionamento_exterior ? rowData.relacionamento_exterior.toLowerCase() === 'true' : false
+          valor_contrato: rowData.valor_contrato ? parseFloat(rowData.valor_contrato) : null
         };
 
-        validRows.push(processedData as ClienteCSVTemplate);
+        validRows.push(processedData as ContratoCSVTemplate);
+      }
+    });
+
+    return {
+      isValid: errors.length === 0,
+      errors,
+      validRows,
+      totalRows: dataRows.length
+    };
+  } catch (error) {
+    return {
+      isValid: false,
+      errors: [{
+        row: 0,
+        field: 'file',
+        value: '',
+        message: `Erro ao processar arquivo: ${error instanceof Error ? error.message : 'Erro desconhecido'}`
+      }],
+      validRows: [],
+      totalRows: 0
+    };
+  }
+}
+
+export function validateCSVDataContratos(csvContent: string): ValidationResult {
+  const errors: ValidationError[] = [];
+  const validRows: ContratoCSVTemplate[] = [];
+
+  try {
+    const rows = parseCSV(csvContent);
+
+    if (rows.length === 0) {
+      return {
+        isValid: false,
+        errors: [{ row: 0, field: 'file', value: '', message: 'Arquivo CSV está vazio' }],
+        validRows: [],
+        totalRows: 0
+      };
+    }
+
+    const headers = rows[0].map(h => h.toLowerCase().trim());
+    const dataRows = rows.slice(1);
+
+    // Validate headers
+    const missingHeaders = CSV_TEMPLATE_HEADERS_CONTRATOS.filter(header =>
+      !headers.includes(header.toLowerCase())
+    );
+
+    if (missingHeaders.length > 0) {
+      errors.push({
+        row: 0,
+        field: 'headers',
+        value: headers.join(','),
+        message: `Colunas obrigatórias faltando: ${missingHeaders.join(', ')}`
+      });
+    }
+
+    // Validate each data row
+    dataRows.forEach((row, index) => {
+      const rowIndex = index + 2; // +2 because we skip header and arrays are 0-indexed
+
+      if (row.length !== headers.length) {
+        errors.push({
+          row: rowIndex,
+          field: 'structure',
+          value: row.join(','),
+          message: `Linha tem ${row.length} colunas, esperado ${headers.length}`
+        });
+        return;
+      }
+
+      const rowData: any = {};
+
+      headers.forEach((header, colIndex) => {
+        const value = row[colIndex]?.trim() || '';
+        const headerName = header.toLowerCase();
+        rowData[headerName] = value;
+
+        // Validate required fields
+        if (REQUIRED_FIELDS_CONTRATOS.includes(headerName) && !value) {
+          errors.push({
+            row: rowIndex,
+            field: headerName,
+            value,
+            message: `Campo obrigatório não pode estar vazio`
+          });
+        }
+
+        // Validate specific field formats
+        switch (headerName) {
+          case 'data_inicio':
+          case 'data_fim':
+            if (value && !validateDate(value)) {
+              errors.push({
+                row: rowIndex,
+                field: headerName,
+                value,
+                message: 'Data deve estar no formato AAAA-MM-DD'
+              });
+            }
+            break;
+
+          case 'tipo_contrato':
+            if (value && !VALID_TIPOS_CONTRATO.includes(value)) {
+              errors.push({
+                row: rowIndex,
+                field: headerName,
+                value,
+                message: `Tipo de contrato inválido. Use um dos valores: ${VALID_TIPOS_CONTRATO.join(', ')}`
+              });
+            }
+            break;
+
+          case 'valor_contrato':
+            if (value) {
+              const valor = parseFloat(value);
+              if (isNaN(valor) || valor < 0) {
+                errors.push({
+                  row: rowIndex,
+                  field: headerName,
+                  value,
+                  message: 'Valor deve ser um número decimal positivo (ex: 15000.00)'
+                });
+              }
+            }
+            break;
+        }
+      });
+
+      // If row has no validation errors for this row, add to valid rows
+      const rowErrors = errors.filter(e => e.row === rowIndex);
+      if (rowErrors.length === 0) {
+        const processedData = {
+          ...rowData,
+          valor_contrato: rowData.valor_contrato ? parseFloat(rowData.valor_contrato) : null
+        };
+
+        validRows.push(processedData as ContratoCSVTemplate);
       }
     });
 

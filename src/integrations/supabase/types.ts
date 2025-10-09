@@ -14,98 +14,106 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin: {
+        Row: {
+          created_at: string
+          email: string | null
+          id: string
+          name: string | null
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          id: string
+          name?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string | null
+        }
+        Relationships: []
+      }
       areas: {
         Row: {
           created_at: string
+          empresa_id: number | null
           id: number
           name: string | null
         }
         Insert: {
           created_at?: string
+          empresa_id?: number | null
           id?: number
           name?: string | null
         }
         Update: {
           created_at?: string
+          empresa_id?: number | null
           id?: number
           name?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "areas_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       clientes: {
         Row: {
-          area: string[] | null
           cidade: string | null
           contato_principal: string | null
           cpf_cnpj: string | null
           created_at: string
-          data_inicio: string | null
           email: string | null
           empresa_id: number | null
           estado: string | null
           grupo_economico: string | null
           id: number
           "nome_ cliente": string | null
-          nota_potencial: string | null
-          ocupacao_cliente: string | null
           pais: string | null
           porte_empresa: string | null
-          potencial: string | null
-          produtos_vendidos: string[] | null
-          quem_trouxe: string | null
           relacionamento_exterior: boolean | null
-          servico_prestado: string[] | null
-          tipo_contrato: string | null
+          segmento_economico: string | null
           whatsapp: string | null
         }
         Insert: {
-          area?: string[] | null
           cidade?: string | null
           contato_principal?: string | null
           cpf_cnpj?: string | null
           created_at?: string
-          data_inicio?: string | null
           email?: string | null
           empresa_id?: number | null
           estado?: string | null
           grupo_economico?: string | null
           id?: number
           "nome_ cliente"?: string | null
-          nota_potencial?: string | null
-          ocupacao_cliente?: string | null
           pais?: string | null
           porte_empresa?: string | null
-          potencial?: string | null
-          produtos_vendidos?: string[] | null
-          quem_trouxe?: string | null
           relacionamento_exterior?: boolean | null
-          servico_prestado?: string[] | null
-          tipo_contrato?: string | null
+          segmento_economico?: string | null
           whatsapp?: string | null
         }
         Update: {
-          area?: string[] | null
           cidade?: string | null
           contato_principal?: string | null
           cpf_cnpj?: string | null
           created_at?: string
-          data_inicio?: string | null
           email?: string | null
           empresa_id?: number | null
           estado?: string | null
           grupo_economico?: string | null
           id?: number
           "nome_ cliente"?: string | null
-          nota_potencial?: string | null
-          ocupacao_cliente?: string | null
           pais?: string | null
           porte_empresa?: string | null
-          potencial?: string | null
-          produtos_vendidos?: string[] | null
-          quem_trouxe?: string | null
           relacionamento_exterior?: boolean | null
-          servico_prestado?: string[] | null
-          tipo_contrato?: string | null
+          segmento_economico?: string | null
           whatsapp?: string | null
         }
         Relationships: [
@@ -114,6 +122,87 @@ export type Database = {
             columns: ["empresa_id"]
             isOneToOne: false
             referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contratos: {
+        Row: {
+          area_id: number | null
+          cliente_id: number | null
+          created_at: string | null
+          data_fim: string | null
+          data_inicio: string | null
+          empresa_id: number | null
+          id: number
+          produto_id: number | null
+          quem_trouxe: string | null
+          servico_id: number | null
+          tipo_contrato: string | null
+          valor_contrato: number | null
+        }
+        Insert: {
+          area_id?: number | null
+          cliente_id?: number | null
+          created_at?: string | null
+          data_fim?: string | null
+          data_inicio?: string | null
+          empresa_id?: number | null
+          id?: number
+          produto_id?: number | null
+          quem_trouxe?: string | null
+          servico_id?: number | null
+          tipo_contrato?: string | null
+          valor_contrato?: number | null
+        }
+        Update: {
+          area_id?: number | null
+          cliente_id?: number | null
+          created_at?: string | null
+          data_fim?: string | null
+          data_inicio?: string | null
+          empresa_id?: number | null
+          id?: number
+          produto_id?: number | null
+          quem_trouxe?: string | null
+          servico_id?: number | null
+          tipo_contrato?: string | null
+          valor_contrato?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contratos_area_id_fkey"
+            columns: ["area_id"]
+            isOneToOne: false
+            referencedRelation: "areas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contratos_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contratos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contratos_produto_id_fkey"
+            columns: ["produto_id"]
+            isOneToOne: false
+            referencedRelation: "produtos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contratos_servico_id_fkey"
+            columns: ["servico_id"]
+            isOneToOne: false
+            referencedRelation: "servicos"
             referencedColumns: ["id"]
           },
         ]
@@ -147,56 +236,66 @@ export type Database = {
           },
         ]
       }
-      products_services: {
+      produtos: {
         Row: {
-          area_id: number | null
           created_at: string
+          empresa_id: number | null
           id: number
           name: string | null
-          product: boolean | null
+          servico_id: number | null
         }
         Insert: {
-          area_id?: number | null
           created_at?: string
+          empresa_id?: number | null
           id?: number
           name?: string | null
-          product?: boolean | null
+          servico_id?: number | null
         }
         Update: {
-          area_id?: number | null
           created_at?: string
+          empresa_id?: number | null
           id?: number
           name?: string | null
-          product?: boolean | null
+          servico_id?: number | null
         }
         Relationships: [
           {
-            foreignKeyName: "products_area_id_fkey"
-            columns: ["area_id"]
+            foreignKeyName: "produtos_empresa_id_fkey"
+            columns: ["empresa_id"]
             isOneToOne: false
-            referencedRelation: "areas"
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "produtos_servico_id_fkey"
+            columns: ["servico_id"]
+            isOneToOne: false
+            referencedRelation: "servicos"
             referencedColumns: ["id"]
           },
         ]
       }
       servicos: {
         Row: {
-          id: number
-          created_at: string
-          name: string | null
           area_id: number | null
+          created_at: string
+          empresa_id: number | null
+          id: number
+          name: string | null
         }
         Insert: {
-          id?: number
-          created_at?: string
-          name?: string | null
           area_id?: number | null
+          created_at?: string
+          empresa_id?: number | null
+          id?: number
+          name?: string | null
         }
         Update: {
-          id?: number
-          created_at?: string
-          name?: string | null
           area_id?: number | null
+          created_at?: string
+          empresa_id?: number | null
+          id?: number
+          name?: string | null
         }
         Relationships: [
           {
@@ -206,33 +305,11 @@ export type Database = {
             referencedRelation: "areas"
             referencedColumns: ["id"]
           },
-        ]
-      }
-      produtos: {
-        Row: {
-          id: number
-          created_at: string
-          name: string | null
-          servico_id: number | null
-        }
-        Insert: {
-          id?: number
-          created_at?: string
-          name?: string | null
-          servico_id?: number | null
-        }
-        Update: {
-          id?: number
-          created_at?: string
-          name?: string | null
-          servico_id?: number | null
-        }
-        Relationships: [
           {
-            foreignKeyName: "produtos_servico_id_fkey"
-            columns: ["servico_id"]
+            foreignKeyName: "servicos_empresa_id_fkey"
+            columns: ["empresa_id"]
             isOneToOne: false
-            referencedRelation: "servicos"
+            referencedRelation: "empresas"
             referencedColumns: ["id"]
           },
         ]

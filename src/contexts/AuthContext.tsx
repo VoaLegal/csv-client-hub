@@ -19,22 +19,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [initialLoad, setInitialLoad] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        console.log('Auth state change:', event, session?.user?.id, 'Current path:', window.location.pathname);
+        
         setSession(session);
         setUser(session?.user ?? null);
         
-        if (event === 'SIGNED_IN' && session) {
-          navigate('/dashboard');
-        }
-        
+        // Only redirect on explicit sign out
         if (event === 'SIGNED_OUT') {
           navigate('/auth');
         }
+        
+        // Don't redirect on SIGNED_IN to avoid issues with tab switching
       }
     );
 
@@ -43,6 +45,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
+      setInitialLoad(false);
     });
 
     return () => subscription.unsubscribe();
@@ -58,6 +61,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       toast.error('Erro no login: ' + error.message);
     } else {
       toast.success('Login realizado com sucesso!');
+      // Manually navigate to dashboard after successful login
+      navigate('/dashboard');
     }
     
     return { error };

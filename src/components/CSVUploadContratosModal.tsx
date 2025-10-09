@@ -5,35 +5,33 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
-import { Upload, Download, FileText, CheckCircle, XCircle, AlertTriangle, Users } from 'lucide-react';
+import { Upload, Download, FileText, CheckCircle, XCircle, AlertTriangle, FileCheck } from 'lucide-react';
 import { toast } from 'sonner';
-import { downloadCSVTemplateClientes, downloadInstructionsClientes } from '@/utils/csvTemplate';
-import { validateCSVDataClientes, ValidationResult, ValidationError } from '@/utils/csvValidator';
-import { clienteService, empresaService, type Empresa } from '@/lib/database';
+import { downloadCSVTemplateContratos, downloadInstructionsContratos } from '@/utils/csvTemplate';
+import { validateCSVDataContratosWithReferences, ValidationResult, ValidationError } from '@/utils/csvValidator';
+import { contratoService, clienteService, areaService, servicoService, produtoService, empresaService, type Empresa } from '@/lib/database';
 import { useAuth } from '@/contexts/AuthContext';
 
-interface CSVUploadModalProps {
+interface CSVUploadContratosModalProps {
   children: React.ReactNode;
-  onClientesImported?: () => void;
+  onContratosImported?: () => void;
 }
 
 interface ImportProgress {
   current: number;
   total: number;
-  currentClient: string;
+  currentContrato: string;
 }
 
-export default function CSVUploadModal({ children, onClientesImported }: CSVUploadModalProps) {
+export default function CSVUploadContratosModal({ children, onContratosImported }: CSVUploadContratosModalProps) {
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
   const [isValidating, setIsValidating] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
-  const [importProgress, setImportProgress] = useState<ImportProgress>({ current: 0, total: 0, currentClient: '' });
+  const [importProgress, setImportProgress] = useState<ImportProgress>({ current: 0, total: 0, currentContrato: '' });
   const [importComplete, setImportComplete] = useState(false);
-  const [importFailed, setImportFailed] = useState(false);
-  const [failedImports, setFailedImports] = useState<{ client: string; error: string }[]>([]);
   const [userCompany, setUserCompany] = useState<Empresa | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -51,16 +49,38 @@ export default function CSVUploadModal({ children, onClientesImported }: CSVUplo
   };
 
   const handleValidateFile = async () => {
-    if (!file) return;
+    if (!file || !user) return;
 
     setIsValidating(true);
     try {
+      // Get user's company first
+      const company = await empresaService.getUserCompany(user.id);
+      if (!company) {
+        toast.error('Empresa não encontrada para este usuário');
+        return;
+      }
+
+      // Load reference data
+      const [clientesData, areasData, servicosData, produtosData] = await Promise.all([
+        clienteService.getByCompanyId(company.id),
+        areaService.getAllForCompany(company.id),
+        servicoService.getAllForCompany(company.id),
+        produtoService.getAllForCompanyWithServico(company.id)
+      ]);
+
       const fileContent = await file.text();
-      const result = validateCSVDataClientes(fileContent);
+      const result = await validateCSVDataContratosWithReferences(
+        fileContent,
+        clientesData,
+        areasData,
+        servicosData,
+        produtosData
+      );
+      
       setValidationResult(result);
 
       if (result.isValid) {
-        toast.success(`Arquivo validado com sucesso! ${result.validRows.length} clientes prontos para importação.`);
+        toast.success(`Arquivo validado com sucesso! ${result.validRows.length} contratos prontos para importação.`);
       } else {
         toast.error(`Arquivo contém ${result.errors.length} erro(s). Verifique os detalhes abaixo.`);
       }
@@ -76,7 +96,7 @@ export default function CSVUploadModal({ children, onClientesImported }: CSVUplo
     if (!validationResult || !validationResult.isValid || !user) return;
 
     setIsImporting(true);
-    setImportProgress({ current: 0, total: validationResult.validRows.length, currentClient: '' });
+    setImportProgress({ current: 0, total: validationResult.validRows.length, currentContrato: '' });
 
     try {
       // Get user's company
@@ -88,45 +108,78 @@ export default function CSVUploadModal({ children, onClientesImported }: CSVUplo
 
       setUserCompany(company);
       let successCount = 0;
-      const failedImportsList: { client: string; error: string }[] = [];
+      const failedImports: { contrato: string; error: string }[] = [];
 
       for (let i = 0; i < validationResult.validRows.length; i++) {
-        const clientData = validationResult.validRows[i];
-        const clienteName = clientData.nome_cliente || `Cliente ${i + 1}`;
+        const contratoData = validationResult.validRows[i] as any;
+        const contratoName = contratoData.email_cliente || `Contrato ${i + 1}`;
 
         setImportProgress({
           current: i + 1,
           total: validationResult.validRows.length,
-          currentClient: clienteName
+          currentContrato: contratoName
         });
 
         try {
-          // Convert CSV data to database format (nova estrutura simplificada)
+          // Find cliente by email
+          const clientes = await clienteService.getByCompanyId(company.id);
+          const cliente = clientes.find(c => c.email === contratoData.email_cliente);
+          
+          if (!cliente) {
+            failedImports.push({ 
+              contrato: contratoName, 
+              error: `Cliente com e-mail "${contratoData.email_cliente}" não encontrado. Cadastre o cliente primeiro.` 
+            });
+            continue;
+          }
+
+          // Find area by name
+          let areaId = null;
+          if (contratoData.area) {
+            const areas = await areaService.getAllForCompany(company.id);
+            const area = areas.find(a => a.name === contratoData.area);
+            areaId = area?.id || null;
+          }
+
+          // Find servico by name
+          let servicoId = null;
+          if (contratoData.servico) {
+            const servicos = await servicoService.getAllForCompany(company.id);
+            const servico = servicos.find(s => s.name === contratoData.servico);
+            servicoId = servico?.id || null;
+          }
+
+          // Find produto by name
+          let produtoId = null;
+          if (contratoData.produto) {
+            const produtos = await produtoService.getAllForCompanyWithServico(company.id);
+            const produto = produtos.find(p => p.name === contratoData.produto);
+            produtoId = produto?.id || null;
+          }
+
+          // Convert CSV data to database format
           const dbData = {
-            "nome_ cliente": clientData.nome_cliente,
-            contato_principal: clientData.contato_principal || null,
-            grupo_economico: clientData.grupo_economico || null,
-            cpf_cnpj: clientData.cpf_cnpj || null,
-            segmento_economico: clientData.segmento_economico || null,
-            cidade: clientData.cidade || null,
-            estado: clientData.estado || null,
-            pais: clientData.pais || null,
-            relacionamento_exterior: clientData.relacionamento_exterior === 'true' || clientData.relacionamento_exterior === true,
-            porte_empresa: clientData.porte_empresa || null,
-            whatsapp: clientData.whatsapp || null,
-            email: clientData.email || null,
-            empresa_id: null // Will be set by clienteService.create
+            cliente_id: cliente.id,
+            area_id: areaId,
+            servico_id: servicoId,
+            produto_id: produtoId,
+            tipo_contrato: contratoData.tipo_contrato || null,
+            valor_contrato: contratoData.valor_contrato || null,
+            data_inicio: contratoData.data_inicio || null,
+            data_fim: contratoData.data_fim || null,
+            quem_trouxe: contratoData.quem_trouxe || null,
+            empresa_id: company.id
           };
 
-          const result = await clienteService.create(dbData, company.id);
+          const result = await contratoService.create(dbData, company.id);
           if (result) {
             successCount++;
           } else {
-            failedImportsList.push({ client: clienteName, error: 'Falha ao salvar no banco de dados' });
+            failedImports.push({ contrato: contratoName, error: 'Falha ao salvar no banco de dados' });
           }
         } catch (error) {
-          failedImportsList.push({
-            client: clienteName,
+          failedImports.push({
+            contrato: contratoName,
             error: error instanceof Error ? error.message : 'Erro desconhecido'
           });
         }
@@ -135,22 +188,17 @@ export default function CSVUploadModal({ children, onClientesImported }: CSVUplo
         await new Promise(resolve => setTimeout(resolve, 100));
       }
 
-      // Set states based on results
-      setFailedImports(failedImportsList);
-      
-      if (failedImportsList.length === 0) {
-        setImportComplete(true);
-        toast.success(`Importação concluída! ${successCount} clientes importados com sucesso.`);
-      } else if (successCount > 0) {
-        setImportComplete(true);
-        toast.warning(`Importação parcial: ${successCount} sucessos, ${failedImportsList.length} falhas.`);
+      setImportComplete(true);
+
+      if (failedImports.length === 0) {
+        toast.success(`Importação concluída! ${successCount} contratos importados com sucesso.`);
       } else {
-        setImportFailed(true);
-        toast.error(`Importação falhou: ${failedImportsList.length} falhas. Verifique os dados e tente novamente.`);
+        toast.warning(`Importação parcial: ${successCount} sucessos, ${failedImports.length} falhas.`);
+        console.log('Failed imports:', failedImports);
       }
 
-      if (onClientesImported) {
-        onClientesImported();
+      if (onContratosImported) {
+        onContratosImported();
       }
     } catch (error) {
       toast.error('Erro durante a importação');
@@ -164,9 +212,7 @@ export default function CSVUploadModal({ children, onClientesImported }: CSVUplo
     setFile(null);
     setValidationResult(null);
     setImportComplete(false);
-    setImportFailed(false);
-    setFailedImports([]);
-    setImportProgress({ current: 0, total: 0, currentClient: '' });
+    setImportProgress({ current: 0, total: 0, currentContrato: '' });
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -221,14 +267,12 @@ export default function CSVUploadModal({ children, onClientesImported }: CSVUplo
         <DialogHeader>
           <DialogTitle className="flex items-center">
             <Upload className="mr-2 h-5 w-5" />
-            Importar Clientes via CSV
+            Importar Contratos via CSV
           </DialogTitle>
           <DialogDescription>
-            Faça upload de um arquivo CSV para importar múltiplos clientes de uma vez
+            Faça upload de um arquivo CSV para importar múltiplos contratos de uma vez
           </DialogDescription>
         </DialogHeader>
-
-        
 
         <div className="space-y-6">
           {/* Download Templates Section */}
@@ -248,7 +292,7 @@ export default function CSVUploadModal({ children, onClientesImported }: CSVUplo
                   variant="outline"
                   onClick={() => {
                     try {
-                      downloadCSVTemplateClientes();
+                      downloadCSVTemplateContratos();
                       toast.success('Template CSV baixado com sucesso!');
                     } catch (error) {
                       toast.error('Erro ao baixar template CSV');
@@ -262,9 +306,28 @@ export default function CSVUploadModal({ children, onClientesImported }: CSVUplo
                 </Button>
                 <Button
                   variant="outline"
-                  onClick={() => {
+                  onClick={async () => {
                     try {
-                      downloadInstructionsClientes();
+                      if (!user) {
+                        toast.error('Usuário não encontrado');
+                        return;
+                      }
+
+                      // Get user's company first
+                      const company = await empresaService.getUserCompany(user.id);
+                      if (!company) {
+                        toast.error('Empresa não encontrada para este usuário');
+                        return;
+                      }
+
+                      // Load reference data for instructions
+                      const [areasData, servicosData, produtosData] = await Promise.all([
+                        areaService.getAllForCompany(company.id),
+                        servicoService.getAllForCompany(company.id),
+                        produtoService.getAllForCompanyWithServico(company.id)
+                      ]);
+
+                      downloadInstructionsContratos(areasData, servicosData, produtosData);
                       toast.success('Instruções baixadas com sucesso!');
                     } catch (error) {
                       toast.error('Erro ao baixar instruções');
@@ -280,8 +343,9 @@ export default function CSVUploadModal({ children, onClientesImported }: CSVUplo
               <Alert>
                 <AlertTriangle className="h-4 w-4" />
                 <AlertDescription>
-                  <strong>Importante:</strong> Este template é apenas para dados de CLIENTES. 
-                  Para importar contratos, use o template separado de contratos.
+                  <strong>Importante:</strong> Este template é apenas para dados de CONTRATOS. 
+                  Os clientes devem já estar cadastrados no sistema (use o e-mail para identificar o cliente).
+                  Áreas, serviços e produtos devem também estar cadastrados.
                   Use o template fornecido e siga as instruções para evitar erros na importação.
                 </AlertDescription>
               </Alert>
@@ -388,8 +452,8 @@ export default function CSVUploadModal({ children, onClientesImported }: CSVUplo
                       size="lg"
                       className="w-full"
                     >
-                      <Users className="mr-2 h-5 w-5" />
-                      {isImporting ? 'Importando...' : `Importar ${validationResult.validRows.length} Clientes`}
+                      <FileCheck className="mr-2 h-5 w-5" />
+                      {isImporting ? 'Importando...' : `Importar ${validationResult.validRows.length} Contratos`}
                     </Button>
                   </div>
                 )}
@@ -402,14 +466,14 @@ export default function CSVUploadModal({ children, onClientesImported }: CSVUplo
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center text-lg">
-                  <Users className="mr-2 h-5 w-5" />
+                  <FileCheck className="mr-2 h-5 w-5" />
                   Progresso da Importação
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
                   <div className="flex justify-between text-sm mb-2">
-                    <span>Importando clientes...</span>
+                    <span>Importando contratos...</span>
                     <span>{importProgress.current} de {importProgress.total}</span>
                   </div>
                   <Progress
@@ -417,9 +481,9 @@ export default function CSVUploadModal({ children, onClientesImported }: CSVUplo
                     className="w-full"
                   />
                 </div>
-                {importProgress.currentClient && (
+                {importProgress.currentContrato && (
                   <p className="text-sm text-muted-foreground">
-                    Processando: {importProgress.currentClient}
+                    Processando: {importProgress.currentContrato}
                   </p>
                 )}
               </CardContent>
@@ -437,46 +501,8 @@ export default function CSVUploadModal({ children, onClientesImported }: CSVUplo
               </CardHeader>
               <CardContent>
                 <p className="text-center text-muted-foreground">
-                  Os clientes foram importados com sucesso! A página será atualizada automaticamente.
+                  Os contratos foram importados com sucesso! A página será atualizada automaticamente.
                 </p>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Import Failed */}
-          {importFailed && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center text-lg text-red-600">
-                  <XCircle className="mr-2 h-5 w-5" />
-                  Importação Falhou
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <p className="text-center text-muted-foreground">
-                  A importação falhou. Verifique os erros abaixo e tente novamente.
-                </p>
-                
-                {failedImports.length > 0 && (
-                  <div>
-                    <h4 className="font-medium mb-3 text-destructive">
-                      Erros encontrados ({failedImports.length}):
-                    </h4>
-                    <div className="space-y-2 max-h-60 overflow-y-auto">
-                      {failedImports.map((failedImport, index) => (
-                        <Card key={index} className="p-3">
-                          <div className="flex items-center gap-2 mb-2">
-                            <XCircle className="h-4 w-4 text-destructive" />
-                            <span className="font-medium">{failedImport.client}</span>
-                          </div>
-                          <div className="text-sm text-muted-foreground">
-                            {failedImport.error}
-                          </div>
-                        </Card>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </CardContent>
             </Card>
           )}

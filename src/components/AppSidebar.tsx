@@ -1,4 +1,4 @@
-import { BarChart3, Users, Package, LogOut, Database } from "lucide-react";
+import { BarChart3, Users, Package, LogOut, Database, FileText } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button";
 const items = [
   { title: "Dashboard", url: "/dashboard", icon: BarChart3 },
   { title: "Clientes", url: "/clientes", icon: Users },
+  { title: "Contratos", url: "/contratos", icon: FileText },
   { title: "Produtos", url: "/produtos", icon: Package },
 ];
 

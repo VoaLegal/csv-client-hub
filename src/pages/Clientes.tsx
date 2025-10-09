@@ -3,11 +3,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Users, Search, Plus, MapPin, Building2, Mail, Phone, Upload, Edit2 } from 'lucide-react';
+import { Users, Search, Plus, MapPin, Building2, Mail, Phone, Upload, Edit2, FileText, Trash2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import NovoClienteModal from '@/components/NovoClienteModal';
+import NovoContratoModal from '@/components/NovoContratoModal';
 import CSVUploadModal from '@/components/CSVUploadModal';
 import EditClienteModal from '@/components/EditClienteModal';
 import { clienteService, empresaService, type Cliente as ClienteType, type Empresa } from '@/lib/database';
@@ -36,7 +37,8 @@ export default function Clientes() {
       cliente.contato_principal?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       cliente.cidade?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       cliente.estado?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      cliente.ocupacao_cliente?.toLowerCase().includes(searchTerm.toLowerCase())
+      cliente.segmento_economico?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      cliente.grupo_economico?.toLowerCase().includes(searchTerm.toLowerCase())
     );
     setFilteredClientes(filtered);
   }, [searchTerm, clientes]);
@@ -71,6 +73,25 @@ export default function Clientes() {
       toast.error('Erro ao carregar clientes');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDeleteCliente = async (clienteId: number) => {
+    if (!userCompany) return;
+
+    if (confirm('Tem certeza que deseja excluir este cliente? Esta ação não pode ser desfeita e também excluirá todos os contratos relacionados.')) {
+      try {
+        const success = await clienteService.delete(clienteId, userCompany.id);
+        if (success) {
+          toast.success('Cliente excluído com sucesso!');
+          await fetchClientes(userCompany.id);
+        } else {
+          toast.error('Erro ao excluir cliente');
+        }
+      } catch (error) {
+        console.error('Error deleting cliente:', error);
+        toast.error('Erro ao excluir cliente');
+      }
     }
   };
 
@@ -194,14 +215,27 @@ export default function Clientes() {
                           <Edit2 className="h-4 w-4" />
                         </Button>
                       </EditClienteModal>
+                      <NovoContratoModal
+                        clienteId={cliente.id}
+                        onContratoCreated={() => toast.success('Contrato criado!')}
+                      >
+                        <Button variant="outline" size="sm" className="p-2 h-8 w-8">
+                          <FileText className="h-4 w-4" />
+                        </Button>
+                      </NovoContratoModal>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="p-2 h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
+                        onClick={() => handleDeleteCliente(cliente.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
                     {cliente.porte_empresa && (
-                      <Badge variant={cliente.porte_empresa.toLowerCase().includes('pj') ? 'default' : 'secondary'}>
+                      <Badge variant={cliente.porte_empresa.toLowerCase().includes('grande') ? 'default' : 'secondary'}>
                         {cliente.porte_empresa}
                       </Badge>
-                    )}
-                    {cliente.tipo_contrato && (
-                      <Badge variant="outline">{cliente.tipo_contrato}</Badge>
                     )}
                   </div>
                 </div>
@@ -236,12 +270,12 @@ export default function Clientes() {
                 </div>
 
                 {/* Segmento e Grupo */}
-                {(cliente.ocupacao_cliente || cliente.grupo_economico) && (
+                {(cliente.segmento_economico || cliente.grupo_economico) && (
                   <div className="flex flex-wrap gap-2">
-                    {cliente.ocupacao_cliente && (
+                    {cliente.segmento_economico && (
                       <Badge variant="secondary" className="text-xs">
                         <Building2 className="mr-1 h-3 w-3" />
-                        {cliente.ocupacao_cliente}
+                        {cliente.segmento_economico}
                       </Badge>
                     )}
                     {cliente.grupo_economico && (
@@ -252,61 +286,10 @@ export default function Clientes() {
                   </div>
                 )}
 
-                {/* Áreas e Serviços */}
-                {cliente.area && cliente.area.length > 0 && (
-                  <div>
-                    <h4 className="text-xs font-medium text-muted-foreground mb-1">ÁREAS:</h4>
-                    <div className="flex flex-wrap gap-1">
-                      {cliente.area.slice(0, 3).map((area, index) => (
-                        <Badge key={index} variant="outline" className="text-xs">
-                          {area}
-                        </Badge>
-                      ))}
-                      {cliente.area.length > 3 && (
-                        <Badge variant="outline" className="text-xs">
-                          +{cliente.area.length - 3} mais
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {cliente.servico_prestado && cliente.servico_prestado.length > 0 && (
-                  <div>
-                    <h4 className="text-xs font-medium text-muted-foreground mb-1">SERVIÇOS:</h4>
-                    <div className="flex flex-wrap gap-1">
-                      {cliente.servico_prestado.slice(0, 3).map((servico, index) => (
-                        <Badge key={index} variant="secondary" className="text-xs">
-                          {servico}
-                        </Badge>
-                      ))}
-                      {cliente.servico_prestado.length > 3 && (
-                        <Badge variant="secondary" className="text-xs">
-                          +{cliente.servico_prestado.length - 3} mais
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* Potencial */}
-                {(cliente.potencial || cliente.nota_potencial) && (
-                  <div className="pt-2 border-t">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-muted-foreground">Potencial:</span>
-                      <div className="flex items-center space-x-2">
-                        {cliente.potencial && (
-                          <Badge variant="outline" className="text-xs">
-                            {cliente.potencial}
-                          </Badge>
-                        )}
-                        {cliente.nota_potencial && (
-                          <Badge variant="default" className="text-xs">
-                            Nota: {cliente.nota_potencial}
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
+                {/* CPF/CNPJ */}
+                {cliente.cpf_cnpj && (
+                  <div className="text-sm text-muted-foreground">
+                    <span className="font-medium">CPF/CNPJ:</span> {cliente.cpf_cnpj}
                   </div>
                 )}
               </CardContent>

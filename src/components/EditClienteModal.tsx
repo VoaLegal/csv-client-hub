@@ -3,15 +3,13 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Badge } from '@/components/ui/badge';
-import { Plus, X, Users, Building2, MapPin, Phone, Mail, Calendar, DollarSign, Edit } from 'lucide-react';
+import { Edit, Building2, MapPin, Phone } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { areaService, servicoService, produtoService, empresaService, type Area, type Servico, type Empresa, type Cliente, type ProdutoWithServico } from '@/lib/database';
+import { empresaService, type Empresa, type Cliente } from '@/lib/database';
 
 interface EditClienteModalProps {
   children: React.ReactNode;
@@ -21,26 +19,38 @@ interface EditClienteModalProps {
 
 interface ClienteFormData {
   nome_cliente: string;
-  contato_principal: string;
-  grupo_economico: string;
   cpf_cnpj: string;
-  area: string[];
-  servico_prestado: string[];
-  produtos_vendidos: string[];
-  potencial: string;
-  nota_potencial: string;
-  data_inicio: string;
+  segmento_economico: string;
+  contato_principal: string;
+  porte_empresa: string;
+  grupo_economico: string;
   cidade: string;
   estado: string;
   pais: string;
   relacionamento_exterior: boolean;
-  porte_empresa: string;
-  quem_trouxe: string;
-  tipo_contrato: string;
-  ocupacao_cliente: string;
-  whatsapp: string;
   email: string;
+  whatsapp: string;
 }
+
+const segmentosEconomicos = [
+  'Agronegócio',
+  'Audiovisual',
+  'Bebida e Alimentos',
+  'Construção civil',
+  'Empreendimentos Imobiliários',
+  'Holding Patrimonial',
+  'Holding Familiar',
+  'Energia/Gás/Combustíveis',
+  'Fintechs',
+  'Bancos e IF',
+  'Comércio',
+  'Comércio eletrônico',
+  'Entretenimento e Eventos',
+  'Serviços Profissionais',
+  'Indústria',
+  'Empresas de tech',
+  'Saúde'
+];
 
 const portesEmpresa = [
   'Microempresa',
@@ -49,15 +59,6 @@ const portesEmpresa = [
   'Grande Empresa',
   'Pessoa Física',
   'MEI'
-];
-
-const tiposContrato = [
-  'Prestação de Serviços',
-  'Venda de Produtos',
-  'Consultoria',
-  'Assessoria',
-  'Manutenção',
-  'Licenciamento'
 ];
 
 const estadosBrasil = [
@@ -72,32 +73,18 @@ export default function EditClienteModal({ children, cliente, onClienteUpdated }
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState<ClienteFormData>({
     nome_cliente: '',
-    contato_principal: '',
-    grupo_economico: '',
     cpf_cnpj: '',
-    area: [],
-    servico_prestado: [],
-    produtos_vendidos: [],
-    potencial: '',
-    nota_potencial: '',
-    data_inicio: '',
+    segmento_economico: '',
+    contato_principal: '',
+    porte_empresa: '',
+    grupo_economico: '',
     cidade: '',
     estado: '',
     pais: 'Brasil',
     relacionamento_exterior: false,
-    porte_empresa: '',
-    quem_trouxe: '',
-    tipo_contrato: '',
-    ocupacao_cliente: '',
-    whatsapp: '',
     email: '',
+    whatsapp: '',
   });
-  const [areas, setAreas] = useState<Area[]>([]);
-  const [services, setServices] = useState<Servico[]>([]);
-  const [products, setProducts] = useState<ProdutoWithServico[]>([]);
-  const [selectedAreaForService, setSelectedAreaForService] = useState('all');
-  const [selectedAreaForProduct, setSelectedAreaForProduct] = useState('all');
-  const [selectedServiceForProduct, setSelectedServiceForProduct] = useState('all');
   const [userCompany, setUserCompany] = useState<Empresa | null>(null);
 
   // Initialize form data with client data when modal opens
@@ -105,52 +92,30 @@ export default function EditClienteModal({ children, cliente, onClienteUpdated }
     if (open && cliente) {
       setFormData({
         nome_cliente: cliente['nome_ cliente'] || '',
-        contato_principal: cliente.contato_principal || '',
-        grupo_economico: cliente.grupo_economico || '',
         cpf_cnpj: cliente.cpf_cnpj || '',
-        area: cliente.area || [],
-        servico_prestado: cliente.servico_prestado || [],
-        produtos_vendidos: cliente.produtos_vendidos || [],
-        potencial: cliente.potencial || '',
-        nota_potencial: cliente.nota_potencial || '',
-        data_inicio: cliente.data_inicio || '',
+        segmento_economico: cliente.segmento_economico || '',
+        contato_principal: cliente.contato_principal || '',
+        porte_empresa: cliente.porte_empresa || '',
+        grupo_economico: cliente.grupo_economico || '',
         cidade: cliente.cidade || '',
         estado: cliente.estado || '',
         pais: cliente.pais || 'Brasil',
         relacionamento_exterior: cliente.relacionamento_exterior || false,
-        porte_empresa: cliente.porte_empresa || '',
-        quem_trouxe: cliente.quem_trouxe || '',
-        tipo_contrato: cliente.tipo_contrato || '',
-        ocupacao_cliente: cliente.ocupacao_cliente || '',
-        whatsapp: cliente.whatsapp || '',
         email: cliente.email || '',
+        whatsapp: cliente.whatsapp || '',
       });
     }
   }, [open, cliente]);
 
   useEffect(() => {
-    const loadData = async () => {
+    const loadCompany = async () => {
       if (!user) return;
-
-      try {
-        const [areasData, servicesData, productsData, companyData] = await Promise.all([
-          areaService.getAll(),
-          servicoService.getAll(),
-          produtoService.getAllWithServico(),
-          empresaService.getUserCompany(user.id)
-        ]);
-        setAreas(areasData);
-        setServices(servicesData);
-        setProducts(productsData);
-        setUserCompany(companyData);
-      } catch (error) {
-        console.error('Error loading data:', error);
-        toast.error('Erro ao carregar dados');
-      }
+      const company = await empresaService.getUserCompany(user.id);
+      setUserCompany(company);
     };
 
     if (open && user) {
-      loadData();
+      loadCompany();
     }
   }, [open, user]);
 
@@ -158,22 +123,6 @@ export default function EditClienteModal({ children, cliente, onClienteUpdated }
     setFormData(prev => ({
       ...prev,
       [field]: value
-    }));
-  };
-
-  const addArrayItem = (field: 'area' | 'servico_prestado' | 'produtos_vendidos', value: string) => {
-    if (value.trim() && !formData[field].includes(value.trim())) {
-      setFormData(prev => ({
-        ...prev,
-        [field]: [...prev[field], value.trim()]
-      }));
-    }
-  };
-
-  const removeArrayItem = (field: 'area' | 'servico_prestado' | 'produtos_vendidos', index: number) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: prev[field].filter((_, i) => i !== index)
     }));
   };
 
@@ -189,25 +138,17 @@ export default function EditClienteModal({ children, cliente, onClienteUpdated }
     try {
       const clienteData = {
         'nome_ cliente': formData.nome_cliente,
-        contato_principal: formData.contato_principal,
-        grupo_economico: formData.grupo_economico,
         cpf_cnpj: formData.cpf_cnpj || null,
-        area: formData.area.length > 0 ? formData.area : null,
-        servico_prestado: formData.servico_prestado.length > 0 ? formData.servico_prestado : null,
-        produtos_vendidos: formData.produtos_vendidos.length > 0 ? formData.produtos_vendidos : null,
-        potencial: formData.potencial || null,
-        nota_potencial: formData.nota_potencial || null,
-        data_inicio: formData.data_inicio || null,
+        segmento_economico: formData.segmento_economico || null,
+        contato_principal: formData.contato_principal || null,
+        porte_empresa: formData.porte_empresa || null,
+        grupo_economico: formData.grupo_economico || null,
         cidade: formData.cidade || null,
         estado: formData.estado || null,
         pais: formData.pais || null,
         relacionamento_exterior: formData.relacionamento_exterior,
-        porte_empresa: formData.porte_empresa || null,
-        quem_trouxe: formData.quem_trouxe || null,
-        tipo_contrato: formData.tipo_contrato || null,
-        ocupacao_cliente: formData.ocupacao_cliente || null,
-        whatsapp: formData.whatsapp || null,
         email: formData.email || null,
+        whatsapp: formData.whatsapp || null,
       };
 
       const { error } = await supabase
@@ -223,9 +164,6 @@ export default function EditClienteModal({ children, cliente, onClienteUpdated }
       }
 
       toast.success('Cliente atualizado com sucesso!');
-      setSelectedAreaForService('all');
-      setSelectedAreaForProduct('all');
-      setSelectedServiceForProduct('all');
       setOpen(false);
 
       if (onClienteUpdated) {
@@ -244,7 +182,7 @@ export default function EditClienteModal({ children, cliente, onClienteUpdated }
       <DialogTrigger asChild>
         {children}
       </DialogTrigger>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center">
             <Edit className="mr-2 h-5 w-5" />
@@ -276,6 +214,32 @@ export default function EditClienteModal({ children, cliente, onClienteUpdated }
               </div>
 
               <div className="space-y-2">
+                <Label htmlFor="cpf_cnpj">CPF/CNPJ</Label>
+                <Input
+                  id="cpf_cnpj"
+                  value={formData.cpf_cnpj}
+                  onChange={(e) => handleInputChange('cpf_cnpj', e.target.value)}
+                  placeholder="000.000.000-00 ou 00.000.000/0000-00"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="segmento_economico">Segmento Econômico</Label>
+                <Select value={formData.segmento_economico} onValueChange={(value) => handleInputChange('segmento_economico', value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o segmento" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {segmentosEconomicos.map((segmento) => (
+                      <SelectItem key={segmento} value={segmento}>{segmento}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
                 <Label htmlFor="contato_principal">Contato Principal</Label>
                 <Input
                   id="contato_principal"
@@ -284,16 +248,6 @@ export default function EditClienteModal({ children, cliente, onClienteUpdated }
                   placeholder="Nome do responsável"
                 />
               </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="cpf_cnpj">CPF/CNPJ</Label>
-              <Input
-                id="cpf_cnpj"
-                value={formData.cpf_cnpj}
-                onChange={(e) => handleInputChange('cpf_cnpj', e.target.value)}
-                placeholder="000.000.000-00 ou 00.000.000/0000-00"
-              />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -312,24 +266,14 @@ export default function EditClienteModal({ children, cliente, onClienteUpdated }
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="ocupacao_cliente">Ocupação/Segmento</Label>
+                <Label htmlFor="grupo_economico">Grupo Econômico</Label>
                 <Input
-                  id="ocupacao_cliente"
-                  value={formData.ocupacao_cliente}
-                  onChange={(e) => handleInputChange('ocupacao_cliente', e.target.value)}
-                  placeholder="Ex: Advogado, Empresa de TI, etc."
+                  id="grupo_economico"
+                  value={formData.grupo_economico}
+                  onChange={(e) => handleInputChange('grupo_economico', e.target.value)}
+                  placeholder="Grupo ou holding ao qual pertence"
                 />
               </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="grupo_economico">Grupo Econômico</Label>
-              <Input
-                id="grupo_economico"
-                value={formData.grupo_economico}
-                onChange={(e) => handleInputChange('grupo_economico', e.target.value)}
-                placeholder="Grupo ou holding ao qual pertence"
-              />
             </div>
           </div>
 
@@ -414,253 +358,6 @@ export default function EditClienteModal({ children, cliente, onClienteUpdated }
                   value={formData.whatsapp}
                   onChange={(e) => handleInputChange('whatsapp', e.target.value)}
                   placeholder="(11) 99999-9999"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Áreas de Atuação */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Áreas de Atuação</h3>
-
-            <div className="flex space-x-2">
-              <Select
-                value=""
-                onValueChange={(value) => {
-                  const area = areas.find(a => a.id.toString() === value);
-                  if (area && area.name && !formData.area.includes(area.name)) {
-                    addArrayItem('area', area.name);
-                  }
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione uma área de atuação" />
-                </SelectTrigger>
-                <SelectContent>
-                  {areas.map((area) => (
-                    <SelectItem key={area.id} value={area.id.toString()}>
-                      {area.name || 'Área sem nome'}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="flex flex-wrap gap-2">
-              {formData.area.map((item, index) => (
-                <Badge key={index} variant="secondary" className="flex items-center gap-1">
-                  {item}
-                  <X
-                    className="h-3 w-3 cursor-pointer"
-                    onClick={() => removeArrayItem('area', index)}
-                  />
-                </Badge>
-              ))}
-            </div>
-          </div>
-
-          {/* Serviços Prestados */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Serviços Prestados</h3>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-              <Select
-                value={selectedAreaForService}
-                onValueChange={setSelectedAreaForService}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Filtrar por área (opcional)" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todas as áreas</SelectItem>
-                  {areas.map((area) => (
-                    <SelectItem key={area.id} value={area.id.toString()}>
-                      {area.name || 'Área sem nome'}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <Select
-                value=""
-                onValueChange={(value) => {
-                  const service = services.find(s => s.id.toString() === value);
-                  if (service && service.name && !formData.servico_prestado.includes(service.name)) {
-                    addArrayItem('servico_prestado', service.name);
-                  }
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione um serviço" />
-                </SelectTrigger>
-                <SelectContent>
-                  {services
-                    .filter(s => selectedAreaForService === 'all' || !selectedAreaForService || s.area_id?.toString() === selectedAreaForService)
-                    .map((service) => (
-                      <SelectItem key={service.id} value={service.id.toString()}>
-                        {service.name || 'Serviço sem nome'}
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="flex flex-wrap gap-2">
-              {formData.servico_prestado.map((item, index) => (
-                <Badge key={index} variant="secondary" className="flex items-center gap-1">
-                  {item}
-                  <X
-                    className="h-3 w-3 cursor-pointer"
-                    onClick={() => removeArrayItem('servico_prestado', index)}
-                  />
-                </Badge>
-              ))}
-            </div>
-          </div>
-
-          {/* Produtos Vendidos */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Produtos Vendidos</h3>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-              <Select
-                value={selectedAreaForProduct}
-                onValueChange={setSelectedAreaForProduct}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Filtrar por área (opcional)" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todas as áreas</SelectItem>
-                  {areas.map((area) => (
-                    <SelectItem key={area.id} value={area.id.toString()}>
-                      {area.name || 'Área sem nome'}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <Select
-                value={selectedServiceForProduct}
-                onValueChange={setSelectedServiceForProduct}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Filtrar por serviço (opcional)" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos os serviços</SelectItem>
-                  {services
-                    .filter(s => selectedAreaForProduct === 'all' || !selectedAreaForProduct || s.area_id?.toString() === selectedAreaForProduct)
-                    .map((service) => (
-                      <SelectItem key={service.id} value={service.id.toString()}>
-                        {service.name || 'Serviço sem nome'}
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
-
-              <Select
-                value=""
-                onValueChange={(value) => {
-                  const product = products.find(p => p.id.toString() === value);
-                  if (product && product.name && !formData.produtos_vendidos.includes(product.name)) {
-                    addArrayItem('produtos_vendidos', product.name);
-                  }
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione um produto" />
-                </SelectTrigger>
-                <SelectContent>
-                  {products
-                    .filter(p => {
-                      const areaOk = selectedAreaForProduct === 'all' || !selectedAreaForProduct || p.servicos?.area_id?.toString() === selectedAreaForProduct;
-                      const servicoOk = selectedServiceForProduct === 'all' || !selectedServiceForProduct || p.servicos?.id?.toString() === selectedServiceForProduct;
-                      return areaOk && servicoOk;
-                    })
-                    .map((product) => (
-                      <SelectItem key={product.id} value={product.id.toString()}>
-                        {product.name || 'Produto sem nome'}
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="flex flex-wrap gap-2">
-              {formData.produtos_vendidos.map((item, index) => (
-                <Badge key={index} variant="secondary" className="flex items-center gap-1">
-                  {item}
-                  <X
-                    className="h-3 w-3 cursor-pointer"
-                    onClick={() => removeArrayItem('produtos_vendidos', index)}
-                  />
-                </Badge>
-              ))}
-            </div>
-          </div>
-
-          {/* Informações Comerciais */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold flex items-center">
-              <DollarSign className="mr-2 h-5 w-5" />
-              Informações Comerciais
-            </h3>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="tipo_contrato">Tipo de Contrato</Label>
-                <Select value={formData.tipo_contrato} onValueChange={(value) => handleInputChange('tipo_contrato', value)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione o tipo" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {tiposContrato.map((tipo) => (
-                      <SelectItem key={tipo} value={tipo}>{tipo}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="data_inicio">Data de Início</Label>
-                <Input
-                  id="data_inicio"
-                  type="date"
-                  value={formData.data_inicio}
-                  onChange={(e) => handleInputChange('data_inicio', e.target.value)}
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="potencial">Potencial</Label>
-                <Input
-                  id="potencial"
-                  value={formData.potencial}
-                  onChange={(e) => handleInputChange('potencial', e.target.value)}
-                  placeholder="Ex: Alto, Médio, Baixo"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="nota_potencial">Nota do Potencial</Label>
-                <Input
-                  id="nota_potencial"
-                  value={formData.nota_potencial}
-                  onChange={(e) => handleInputChange('nota_potencial', e.target.value)}
-                  placeholder="Ex: 1-10"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="quem_trouxe">Quem Trouxe</Label>
-                <Input
-                  id="quem_trouxe"
-                  value={formData.quem_trouxe}
-                  onChange={(e) => handleInputChange('quem_trouxe', e.target.value)}
-                  placeholder="Nome do indicador"
                 />
               </div>
             </div>

@@ -9,6 +9,7 @@ import Layout from '@/components/Layout';
 import Auth from '@/pages/Auth';
 import Dashboard from '@/pages/Dashboard';
 import Clientes from '@/pages/Clientes';
+import Contratos from '@/pages/Contratos';
 import Produtos from '@/pages/Produtos';
 
 const queryClient = new QueryClient();
@@ -22,7 +23,11 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     </div>;
   }
   
-  if (!user) return <Navigate to="/auth" replace />;
+  if (!user) {
+    console.log('No user found, redirecting to auth');
+    return <Navigate to="/auth" replace />;
+  }
+  
   return <Layout>{children}</Layout>;
 }
 
@@ -50,6 +55,7 @@ const App = () => (
             <Route path="/auth" element={<PublicRoute><Auth /></PublicRoute>} />
             <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
             <Route path="/clientes" element={<ProtectedRoute><Clientes /></ProtectedRoute>} />
+            <Route path="/contratos" element={<ProtectedRoute><Contratos /></ProtectedRoute>} />
             <Route path="/produtos" element={<ProtectedRoute><Produtos /></ProtectedRoute>} />
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
