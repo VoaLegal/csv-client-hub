@@ -6,11 +6,12 @@ import { Input } from '@/components/ui/input';
 import { Package, Search, Plus, Tag, Layers, Settings, Trash2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { areaService, servicoService, produtoService, empresaService } from '@/lib/database';
-import { Area, Servico, ProdutoWithServico } from '@/lib/database';
+import { areaService, servicoService, produtoService, empresaService, segmentoService } from '@/lib/database';
+import { Area, Servico, ProdutoWithServico, Segmento } from '@/lib/database';
 import NovoAreaModal from '@/components/NovoAreaModal';
 import NovoServicoModal from '@/components/NovoServicoModal';
 import NovoProdutoModal from '@/components/NovoProdutoModal';
+import NovoSegmentoModal from '@/components/NovoSegmentoModal';
 
 interface Produto {
   id: number;
@@ -28,6 +29,7 @@ export default function Produtos() {
   const [produtos, setProdutos] = useState<Produto[]>([]);
   const [areas, setAreas] = useState<Area[]>([]);
   const [servicos, setServicos] = useState<Servico[]>([]);
+  const [segmentos, setSegmentos] = useState<Segmento[]>([]);
   const [filteredProdutos, setFilteredProdutos] = useState<Produto[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -41,6 +43,7 @@ export default function Produtos() {
   const [novoAreaModalOpen, setNovoAreaModalOpen] = useState(false);
   const [novoServicoModalOpen, setNovoServicoModalOpen] = useState(false);
   const [novoProdutoModalOpen, setNovoProdutoModalOpen] = useState(false);
+  const [novoSegmentoModalOpen, setNovoSegmentoModalOpen] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -100,6 +103,10 @@ export default function Produtos() {
       // Fetch serviços (gerais + da empresa)
       const servicosData = await servicoService.getAllForCompany(empresaId);
       setServicos(servicosData);
+
+      // Fetch segmentos (gerais + da empresa)
+      const segmentosData = await segmentoService.getAllForCompany(empresaId);
+      setSegmentos(segmentosData);
 
       // Fetch produtos (gerais + da empresa) com joins
       const produtosData = await produtoService.getAllForCompanyWithServico(empresaId);
@@ -203,6 +210,25 @@ export default function Produtos() {
     }
   };
 
+  const handleDeleteSegmento = async (segmentoId: number) => {
+    if (!userCompany) return;
+
+    if (confirm('Tem certeza que deseja excluir este segmento? Esta ação não pode ser desfeita.')) {
+      try {
+        const success = await segmentoService.delete(segmentoId, userCompany.id);
+        if (success) {
+          toast.success('Segmento excluído com sucesso!');
+          fetchData();
+        } else {
+          toast.error('Erro ao excluir segmento');
+        }
+      } catch (error) {
+        console.error('Erro ao excluir segmento:', error);
+        toast.error('Erro ao excluir segmento');
+      }
+    }
+  };
+
   const handleAreaClick = (areaId: number) => {
     if (selectedArea === areaId) {
       setSelectedArea(null); // Deselecionar se já estiver selecionada
@@ -272,7 +298,7 @@ export default function Produtos() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-base">Total de Produtos</CardTitle>
@@ -326,6 +352,18 @@ export default function Produtos() {
             )}
           </CardContent>
         </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">Total de Segmentos</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{segmentos.length}</div>
+            <div className="text-sm text-muted-foreground">
+              {segmentos.filter(s => s.empresa_id === userCompany?.id).length} próprios
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Search bar and action buttons */}
@@ -357,6 +395,15 @@ export default function Produtos() {
           >
             <Settings className="mr-2 h-4 w-4" />
             Novo Serviço
+          </Button>
+          
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setNovoSegmentoModalOpen(true)}
+          >
+            <Tag className="mr-2 h-4 w-4" />
+            Novo Segmento
           </Button>
           
           <Button
@@ -489,6 +536,64 @@ export default function Produtos() {
                     </div>
                   );
                 })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Lista de Segmentos */}
+      {segmentos.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Segmentos Econômicos</CardTitle>
+            <CardDescription>
+              Gerencie os segmentos econômicos disponíveis para seus clientes
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {/* Segmentos próprios primeiro */}
+              {segmentos
+                .filter(segmento => segmento.empresa_id === userCompany?.id)
+                .map((segmento) => (
+                  <div
+                    key={segmento.id}
+                    className="flex items-center justify-between p-3 border-l-4 border-l-primary rounded-lg bg-primary/5"
+                  >
+                    <div className="flex items-center space-x-3">
+                      <div className="h-3 w-3 rounded-full bg-primary"></div>
+                      <span className="font-semibold text-primary">
+                        {segmento.name}
+                      </span>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleDeleteSegmento(segmento.id)}
+                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </div>
+                ))}
+              
+              {/* Segmentos gerais */}
+              {segmentos
+                .filter(segmento => segmento.empresa_id !== userCompany?.id)
+                .map((segmento) => (
+                  <div
+                    key={segmento.id}
+                    className="flex items-center justify-between p-3 border rounded-lg"
+                  >
+                    <div className="flex items-center space-x-3">
+                      <div className="h-3 w-3 rounded-full bg-muted-foreground"></div>
+                      <span className="font-medium">
+                        {segmento.name}
+                      </span>
+                    </div>
+                    <Badge variant="secondary">Geral</Badge>
+                  </div>
+                ))}
             </div>
           </CardContent>
         </Card>
@@ -742,6 +847,12 @@ export default function Produtos() {
       <NovoProdutoModal
         open={novoProdutoModalOpen}
         onOpenChange={setNovoProdutoModalOpen}
+        onSuccess={fetchData}
+      />
+
+      <NovoSegmentoModal
+        open={novoSegmentoModalOpen}
+        onOpenChange={setNovoSegmentoModalOpen}
         onSuccess={fetchData}
       />
     </div>

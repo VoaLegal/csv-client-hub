@@ -173,25 +173,10 @@ export function generateInstructionsFileClientes(): string {
   });
 
   instructions.push('');
-  instructions.push('SEGMENTOS ECONÔMICOS VÁLIDOS:');
-  instructions.push('Use exatamente um dos valores abaixo para segmento_economico:');
-  instructions.push('- Agronegócio');
-  instructions.push('- Audiovisual');
-  instructions.push('- Bebida e Alimentos');
-  instructions.push('- Construção civil');
-  instructions.push('- Empreendimentos Imobiliários');
-  instructions.push('- Holding Patrimonial');
-  instructions.push('- Holding Familiar');
-  instructions.push('- Energia/Gás/Combustíveis');
-  instructions.push('- Fintechs');
-  instructions.push('- Bancos e IF');
-  instructions.push('- Comércio');
-  instructions.push('- Comércio eletrônico');
-  instructions.push('- Entretenimento e Eventos');
-  instructions.push('- Serviços Profissionais');
-  instructions.push('- Indústria');
-  instructions.push('- Empresas de tech');
-  instructions.push('- Saúde');
+  instructions.push('SEGMENTOS ECONÔMICOS:');
+  instructions.push('Os segmentos econômicos são gerenciados dinamicamente no sistema.');
+  instructions.push('Ao importar, use o nome exato do segmento conforme cadastrado na página de Segmentos.');
+  instructions.push('Você pode visualizar e gerenciar os segmentos disponíveis na seção "Segmentos" do menu.');
   
   instructions.push('');
   instructions.push('OUTROS EXEMPLOS DE PREENCHIMENTO:');

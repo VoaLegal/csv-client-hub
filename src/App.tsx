@@ -11,6 +11,7 @@ import Dashboard from '@/pages/Dashboard';
 import Clientes from '@/pages/Clientes';
 import Contratos from '@/pages/Contratos';
 import Produtos from '@/pages/Produtos';
+import Segmentos from '@/pages/Segmentos';
 
 const queryClient = new QueryClient();
 
@@ -57,6 +58,7 @@ const App = () => (
             <Route path="/clientes" element={<ProtectedRoute><Clientes /></ProtectedRoute>} />
             <Route path="/contratos" element={<ProtectedRoute><Contratos /></ProtectedRoute>} />
             <Route path="/produtos" element={<ProtectedRoute><Produtos /></ProtectedRoute>} />
+            <Route path="/segmentos" element={<ProtectedRoute><Segmentos /></ProtectedRoute>} />
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>

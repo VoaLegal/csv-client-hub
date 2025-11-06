@@ -11,10 +11,10 @@ import NovoClienteModal from '@/components/NovoClienteModal';
 import NovoContratoModal from '@/components/NovoContratoModal';
 import CSVUploadModal from '@/components/CSVUploadModal';
 import EditClienteModal from '@/components/EditClienteModal';
-import { clienteService, empresaService, type Cliente as ClienteType, type Empresa } from '@/lib/database';
+import { clienteService, empresaService, type ClienteWithSegmento, type Empresa } from '@/lib/database';
 
-// Using the Cliente type from database service
-type Cliente = ClienteType;
+// Using the ClienteWithSegmento type from database service
+type Cliente = ClienteWithSegmento;
 
 export default function Clientes() {
   const { user } = useAuth();
@@ -37,7 +37,7 @@ export default function Clientes() {
       cliente.contato_principal?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       cliente.cidade?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       cliente.estado?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      cliente.segmento_economico?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      cliente.segmentos?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       cliente.grupo_economico?.toLowerCase().includes(searchTerm.toLowerCase())
     );
     setFilteredClientes(filtered);
@@ -270,12 +270,12 @@ export default function Clientes() {
                 </div>
 
                 {/* Segmento e Grupo */}
-                {(cliente.segmento_economico || cliente.grupo_economico) && (
+                {(cliente.segmentos?.name || cliente.grupo_economico) && (
                   <div className="flex flex-wrap gap-2">
-                    {cliente.segmento_economico && (
+                    {cliente.segmentos?.name && (
                       <Badge variant="secondary" className="text-xs">
                         <Building2 className="mr-1 h-3 w-3" />
-                        {cliente.segmento_economico}
+                        {cliente.segmentos.name}
                       </Badge>
                     )}
                     {cliente.grupo_economico && (

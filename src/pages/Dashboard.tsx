@@ -25,7 +25,7 @@ import {
   ComposedChart
 } from 'recharts';
 import BrazilMap from '@/components/BrazilMap';
-import { empresaService, clienteService, contratoService, type Empresa, type Cliente, type ContratoWithRelations } from '@/lib/database';
+import { empresaService, clienteService, contratoService, type Empresa, type ClienteWithSegmento, type ContratoWithRelations } from '@/lib/database';
 
 interface DashboardStats {
   totalClientes: number;
@@ -89,7 +89,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [selectedEstado, setSelectedEstado] = useState<string | null>(null);
   const [userCompany, setUserCompany] = useState<Empresa | null>(null);
-  const [allClientes, setAllClientes] = useState<Cliente[]>([]);
+  const [allClientes, setAllClientes] = useState<ClienteWithSegmento[]>([]);
   const [showScrollToTop, setShowScrollToTop] = useState(false);
 
   // Scroll function
@@ -158,7 +158,7 @@ export default function Dashboard() {
     }
   };
 
-  const calculateStats = (clientes: Cliente[], contratos: ContratoWithRelations[]) => {
+  const calculateStats = (clientes: ClienteWithSegmento[], contratos: ContratoWithRelations[]) => {
     const totalClientes = clientes.length;
     let clientesPJ = 0;
     let clientesPF = 0;
@@ -185,9 +185,9 @@ export default function Dashboard() {
           (estadosData[cliente.estado].cities[cliente.cidade] || 0) + 1;
       }
 
-      if (cliente.segmento_economico) {
-        segmentosCount[cliente.segmento_economico] = 
-          (segmentosCount[cliente.segmento_economico] || 0) + 1;
+      if (cliente.segmentos?.name) {
+        segmentosCount[cliente.segmentos.name] = 
+          (segmentosCount[cliente.segmentos.name] || 0) + 1;
       }
     });
 
@@ -207,7 +207,7 @@ export default function Dashboard() {
     const receitaRelacInternacionalMap = { com: 0, sem: 0 };
     const faturamentoPorIndicadorMap: { [key: string]: number } = {};
     const contratosPorMesTimelineMap: { [key: string]: number } = {};
-    const clienteValorMap: { [clienteId: number]: { nome: string; valor: number; cliente: Cliente | null } } = {};
+    const clienteValorMap: { [clienteId: number]: { nome: string; valor: number; cliente: ClienteWithSegmento | null } } = {};
 
     contratos.forEach((contrato) => {
       if (contrato.data_fim && new Date(contrato.data_fim) < new Date()) {
@@ -372,9 +372,9 @@ export default function Dashboard() {
     
     Object.entries(clienteValorMap).forEach(([id, data]) => {
       if (data.cliente) {
-        if (data.cliente.segmento_economico) {
-          receitaPorSegmentoMap[data.cliente.segmento_economico] = 
-            (receitaPorSegmentoMap[data.cliente.segmento_economico] || 0) + data.valor;
+        if (data.cliente.segmentos?.name) {
+          receitaPorSegmentoMap[data.cliente.segmentos.name] = 
+            (receitaPorSegmentoMap[data.cliente.segmentos.name] || 0) + data.valor;
         }
         if (data.cliente.porte_empresa) {
           receitaPorPorteMap[data.cliente.porte_empresa] = 
@@ -1571,9 +1571,9 @@ export default function Dashboard() {
                                 <div key={cliente.id} className="flex items-center justify-between p-2 bg-background rounded border hover:border-primary transition-colors">
                                   <div className="flex-1">
                                     <p className="font-medium text-sm">{cliente['nome_ cliente']}</p>
-                                    {cliente.segmento_economico && (
+                                    {cliente.segmentos?.name && (
                                       <p className="text-xs text-muted-foreground">
-                                        {cliente.segmento_economico}
+                                        {cliente.segmentos.name}
                                       </p>
                                     )}
                                   </div>

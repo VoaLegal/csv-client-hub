@@ -9,7 +9,7 @@ import { Edit, Building2, MapPin, Phone } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { empresaService, type Empresa, type Cliente } from '@/lib/database';
+import { empresaService, segmentoService, type Empresa, type Cliente, type Segmento } from '@/lib/database';
 
 interface EditClienteModalProps {
   children: React.ReactNode;
@@ -20,7 +20,7 @@ interface EditClienteModalProps {
 interface ClienteFormData {
   nome_cliente: string;
   cpf_cnpj: string;
-  segmento_economico: string;
+  segmento_id: string;
   contato_principal: string;
   porte_empresa: string;
   grupo_economico: string;
@@ -31,26 +31,6 @@ interface ClienteFormData {
   email: string;
   whatsapp: string;
 }
-
-const segmentosEconomicos = [
-  'Agronegócio',
-  'Audiovisual',
-  'Bebida e Alimentos',
-  'Construção civil',
-  'Empreendimentos Imobiliários',
-  'Holding Patrimonial',
-  'Holding Familiar',
-  'Energia/Gás/Combustíveis',
-  'Fintechs',
-  'Bancos e IF',
-  'Comércio',
-  'Comércio eletrônico',
-  'Entretenimento e Eventos',
-  'Serviços Profissionais',
-  'Indústria',
-  'Empresas de tech',
-  'Saúde'
-];
 
 const portesEmpresa = [
   'Microempresa',
@@ -74,7 +54,7 @@ export default function EditClienteModal({ children, cliente, onClienteUpdated }
   const [formData, setFormData] = useState<ClienteFormData>({
     nome_cliente: '',
     cpf_cnpj: '',
-    segmento_economico: '',
+    segmento_id: '',
     contato_principal: '',
     porte_empresa: '',
     grupo_economico: '',
@@ -86,6 +66,7 @@ export default function EditClienteModal({ children, cliente, onClienteUpdated }
     whatsapp: '',
   });
   const [userCompany, setUserCompany] = useState<Empresa | null>(null);
+  const [segmentos, setSegmentos] = useState<Segmento[]>([]);
 
   // Initialize form data with client data when modal opens
   useEffect(() => {
@@ -93,7 +74,7 @@ export default function EditClienteModal({ children, cliente, onClienteUpdated }
       setFormData({
         nome_cliente: cliente['nome_ cliente'] || '',
         cpf_cnpj: cliente.cpf_cnpj || '',
-        segmento_economico: cliente.segmento_economico || '',
+        segmento_id: cliente.segmento_id ? cliente.segmento_id.toString() : '',
         contato_principal: cliente.contato_principal || '',
         porte_empresa: cliente.porte_empresa || '',
         grupo_economico: cliente.grupo_economico || '',
@@ -108,14 +89,19 @@ export default function EditClienteModal({ children, cliente, onClienteUpdated }
   }, [open, cliente]);
 
   useEffect(() => {
-    const loadCompany = async () => {
+    const loadData = async () => {
       if (!user) return;
       const company = await empresaService.getUserCompany(user.id);
       setUserCompany(company);
+      
+      if (company) {
+        const segmentosData = await segmentoService.getAllForCompany(company.id);
+        setSegmentos(segmentosData);
+      }
     };
 
     if (open && user) {
-      loadCompany();
+      loadData();
     }
   }, [open, user]);
 
@@ -139,7 +125,7 @@ export default function EditClienteModal({ children, cliente, onClienteUpdated }
       const clienteData = {
         'nome_ cliente': formData.nome_cliente,
         cpf_cnpj: formData.cpf_cnpj || null,
-        segmento_economico: formData.segmento_economico || null,
+        segmento_id: formData.segmento_id ? parseInt(formData.segmento_id) : null,
         contato_principal: formData.contato_principal || null,
         porte_empresa: formData.porte_empresa || null,
         grupo_economico: formData.grupo_economico || null,
@@ -226,14 +212,16 @@ export default function EditClienteModal({ children, cliente, onClienteUpdated }
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="segmento_economico">Segmento Econômico</Label>
-                <Select value={formData.segmento_economico} onValueChange={(value) => handleInputChange('segmento_economico', value)}>
+                <Label htmlFor="segmento_id">Segmento Econômico</Label>
+                <Select value={formData.segmento_id} onValueChange={(value) => handleInputChange('segmento_id', value)}>
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione o segmento" />
                   </SelectTrigger>
                   <SelectContent>
-                    {segmentosEconomicos.map((segmento) => (
-                      <SelectItem key={segmento} value={segmento}>{segmento}</SelectItem>
+                    {segmentos.map((segmento) => (
+                      <SelectItem key={segmento.id} value={segmento.id.toString()}>
+                        {segmento.name}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>

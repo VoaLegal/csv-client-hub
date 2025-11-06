@@ -45,25 +45,8 @@ const VALID_TIPOS_CONTRATO = [
   'mensalidade de processo'
 ];
 
-const VALID_SEGMENTOS_ECONOMICOS = [
-  'Agronegócio',
-  'Audiovisual',
-  'Bebida e Alimentos',
-  'Construção civil',
-  'Empreendimentos Imobiliários',
-  'Holding Patrimonial',
-  'Holding Familiar',
-  'Energia/Gás/Combustíveis',
-  'Fintechs',
-  'Bancos e IF',
-  'Comércio',
-  'Comércio eletrônico',
-  'Entretenimento e Eventos',
-  'Serviços Profissionais',
-  'Indústria',
-  'Empresas de tech',
-  'Saúde'
-];
+// Segmentos agora são dinâmicos e gerenciados no banco de dados
+// A validação será feita no backend quando o segmento for associado ao cliente
 
 export function parseCSV(csvContent: string): string[][] {
   const lines = csvContent.trim().split('\n');
@@ -320,14 +303,9 @@ export function validateCSVDataClientes(csvContent: string): ValidationResult {
             break;
 
           case 'segmento_economico':
-            if (value && !VALID_SEGMENTOS_ECONOMICOS.includes(value)) {
-              errors.push({
-                row: rowIndex,
-                field: headerName,
-                value,
-                message: `Segmento econômico inválido. Use um dos valores: ${VALID_SEGMENTOS_ECONOMICOS.join(', ')}`
-              });
-            }
+            // Segmentos agora são dinâmicos e gerenciados no banco de dados
+            // A validação será feita no backend quando o segmento for associado ao cliente
+            // Apenas verificamos se o valor não está vazio (se fornecido)
             break;
         }
       });

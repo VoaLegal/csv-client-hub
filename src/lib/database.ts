@@ -4,6 +4,7 @@ import type { Tables } from '@/integrations/supabase/types';
 export type Area = Tables<'areas'>;
 export type Servico = Tables<'servicos'>;
 export type Produto = Tables<'produtos'>;
+export type Segmento = Tables<'segmentos'>;
 export type Empresa = Tables<'empresas'>;
 export type Cliente = Tables<'clientes'>;
 export type Contrato = Tables<'contratos'>;
@@ -300,6 +301,103 @@ export const produtoService = {
   }
 };
 
+export const segmentoService = {
+  // Busca segmentos gerais (empresa_id null) + segmentos da empresa
+  async getAllForCompany(empresaId: number): Promise<Segmento[]> {
+    const { data, error } = await supabase
+      .from('segmentos')
+      .select('id, created_at, name, empresa_id')
+      .or(`empresa_id.is.null,empresa_id.eq.${empresaId}`)
+      .order('name');
+
+    if (error) {
+      console.error('Error fetching segmentos for company:', error);
+      return [];
+    }
+
+    return data || [];
+  },
+
+  async getAll(): Promise<Segmento[]> {
+    const { data, error } = await supabase
+      .from('segmentos')
+      .select('id, created_at, name, empresa_id')
+      .order('name');
+
+    if (error) {
+      console.error('Error fetching segmentos:', error);
+      return [];
+    }
+
+    return data || [];
+  },
+
+  async getById(id: number): Promise<Segmento | null> {
+    const { data, error } = await supabase
+      .from('segmentos')
+      .select('id, created_at, name, empresa_id')
+      .eq('id', id)
+      .single();
+
+    if (error) {
+      console.error('Error fetching segmento:', error);
+      return null;
+    }
+
+    return data;
+  },
+
+  async create(segmentoData: Omit<Segmento, 'id' | 'created_at'>, empresaId: number): Promise<Segmento | null> {
+    const { data, error } = await supabase
+      .from('segmentos')
+      .insert([{
+        ...segmentoData,
+        empresa_id: empresaId
+      }])
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error creating segmento:', error);
+      return null;
+    }
+
+    return data;
+  },
+
+  async delete(id: number, empresaId: number): Promise<boolean> {
+    // First verify the segmento belongs to the company
+    const { data: existingSegmento, error: fetchError } = await supabase
+      .from('segmentos')
+      .select('empresa_id')
+      .eq('id', id)
+      .single();
+
+    if (fetchError) {
+      console.error('Error fetching segmento for verification:', fetchError);
+      return false;
+    }
+
+    // Allow deletion of general segmentos (empresa_id null) or company-specific ones
+    if (existingSegmento.empresa_id !== null && existingSegmento.empresa_id !== empresaId) {
+      console.error('Segmento does not belong to the specified company');
+      return false;
+    }
+
+    const { error } = await supabase
+      .from('segmentos')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error deleting segmento:', error);
+      return false;
+    }
+
+    return true;
+  }
+};
+
 export const empresaService = {
   async getUserCompany(userId: string): Promise<Empresa | null> {
     const { data, error } = await supabase
@@ -317,12 +415,16 @@ export const empresaService = {
   }
 };
 
+export interface ClienteWithSegmento extends Cliente {
+  segmentos?: { id: number; name: string | null } | null;
+}
+
 export const clienteService = {
-  async getByCompanyId(empresaId: number): Promise<Cliente[]> {
+  async getByCompanyId(empresaId: number): Promise<ClienteWithSegmento[]> {
     console.log('Fetching clients for company:', empresaId);
     const { data, error } = await supabase
       .from('clientes')
-      .select('*')
+      .select('*, segmentos ( id, name )')
       .eq('empresa_id', empresaId)
       .order('"nome_ cliente"', { ascending: true });
 
@@ -332,7 +434,7 @@ export const clienteService = {
     }
 
     console.log('Fetched clients:', data);
-    return data || [];
+    return (data as unknown as ClienteWithSegmento[]) || [];
   },
 
   async create(clienteData: Omit<Cliente, 'id' | 'created_at'>, empresaId: number): Promise<Cliente | null> {

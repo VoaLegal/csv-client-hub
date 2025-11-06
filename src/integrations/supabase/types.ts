@@ -79,7 +79,7 @@ export type Database = {
           pais: string | null
           porte_empresa: string | null
           relacionamento_exterior: boolean | null
-          segmento_economico: string | null
+          segmento_id: number | null
           whatsapp: string | null
         }
         Insert: {
@@ -96,7 +96,7 @@ export type Database = {
           pais?: string | null
           porte_empresa?: string | null
           relacionamento_exterior?: boolean | null
-          segmento_economico?: string | null
+          segmento_id?: number | null
           whatsapp?: string | null
         }
         Update: {
@@ -113,7 +113,7 @@ export type Database = {
           pais?: string | null
           porte_empresa?: string | null
           relacionamento_exterior?: boolean | null
-          segmento_economico?: string | null
+          segmento_id?: number | null
           whatsapp?: string | null
         }
         Relationships: [
@@ -122,6 +122,13 @@ export type Database = {
             columns: ["empresa_id"]
             isOneToOne: false
             referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clientes_segmento_id_fkey"
+            columns: ["segmento_id"]
+            isOneToOne: false
+            referencedRelation: "segmentos"
             referencedColumns: ["id"]
           },
         ]
@@ -271,6 +278,35 @@ export type Database = {
             columns: ["servico_id"]
             isOneToOne: false
             referencedRelation: "servicos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      segmentos: {
+        Row: {
+          created_at: string
+          empresa_id: number | null
+          id: number
+          name: string | null
+        }
+        Insert: {
+          created_at?: string
+          empresa_id?: number | null
+          id?: number
+          name?: string | null
+        }
+        Update: {
+          created_at?: string
+          empresa_id?: number | null
+          id?: number
+          name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "segmentos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
             referencedColumns: ["id"]
           },
         ]

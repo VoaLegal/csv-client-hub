@@ -1,4 +1,4 @@
-import { BarChart3, Users, Package, LogOut, Database, FileText } from "lucide-react";
+import { BarChart3, Users, Package, LogOut, Database, FileText, Tag } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -23,6 +23,7 @@ const items = [
   { title: "Clientes", url: "/clientes", icon: Users },
   { title: "Contratos", url: "/contratos", icon: FileText },
   { title: "Produtos", url: "/produtos", icon: Package },
+  { title: "Segmentos", url: "/segmentos", icon: Tag },
 ];
 
 export function AppSidebar() {
